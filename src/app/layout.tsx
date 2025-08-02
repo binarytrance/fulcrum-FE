@@ -22,6 +22,10 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  console.log("first");
+  // 1. if user arrives at / then check if user is logged in
+  // 2. if user object that i receive in the auth response has any goals, then redirect to /goals else, redirect to /create-goal
+  //
   return (
     <html lang="en">
       <body
