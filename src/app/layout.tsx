@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+// import readFromLocalStorage from "@/utils/readFromLocalStorage";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,11 +26,13 @@ export default function RootLayout({
   console.log("first");
   // 1. if user arrives at / then check if user is logged in
   // 2. if user object that i receive in the auth response has any goals, then redirect to /goals else, redirect to /create-goal
-  //
+  // if (readFromLocalStorage("isAuthorized")) {
+  // } else {
+  // }
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased p-10`}
       >
         {children}
       </body>
