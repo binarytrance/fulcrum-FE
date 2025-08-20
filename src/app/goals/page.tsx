@@ -1,5 +1,12 @@
-const Goals = () => {
-  return <div>list of Goals</div>;
+import { Button } from "@/components/ui/button";
+
+const goals = () => {
+  return (
+    <div>
+      <Button>Create goal</Button>
+      <p>List of goals if present</p>
+    </div>
+  );
 };
 
-export default Goals;
+export default goals;
