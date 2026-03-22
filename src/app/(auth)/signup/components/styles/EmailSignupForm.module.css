@@ -1,0 +1,21 @@
+.loaderIcon {
+  display: inline-block;
+  margin-left: 0.25rem;
+  animation: loaderShuttle 0.8s ease-in-out infinite;
+}
+
+@keyframes loaderShuttle {
+  0%,
+  100% {
+    transform: translateX(-2px);
+  }
+  50% {
+    transform: translateX(2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loaderIcon {
+    animation: none;
+  }
+}

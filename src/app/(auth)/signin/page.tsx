@@ -1,6 +1,5 @@
 "use client";
 
-import { generateUsername } from "@/actions/generate-username";
 import { useRouter } from "next/navigation";
 import {
   Form,
