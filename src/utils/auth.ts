@@ -4,6 +4,7 @@ export const AUTH_API_BASE =
 const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_BASE_URL;
 
 export const GOOGLE_SIGNUP_CALLBACK_PATH = '/signup/google/callback';
+export const GOOGLE_SIGNIN_CALLBACK_PATH = '/signin/google/callback';
 
 export function buildAuthApiUrl(path: string): string {
     const normalizedPath = path.startsWith('/') ? path : `/${path}`;
