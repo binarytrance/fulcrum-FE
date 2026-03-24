@@ -1,6 +1,5 @@
 "use client";
 
-import { generateUsername } from "@/actions/generate-username";
 import { useRouter } from "next/navigation";
 import {
   Form,
@@ -15,6 +14,7 @@ import { useForm } from "react-hook-form";
 import * as zod from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
+import { GoogleSigninButton } from "./components/GoogleSigninButton";
 
 const schema = zod.object({
   username: zod.string().min(4),
@@ -38,6 +38,12 @@ const SignIn = () => {
     <div className="flex flex-col items-center">
       <h1 className="mb-8 font-bold text-2xl">Sign In</h1>
       <div className="min-w-xl p-5 border rounded-sm overflow-hidden">
+        <GoogleSigninButton className="mb-4" />
+        <div className="my-4 flex items-center gap-3">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-xs text-muted-foreground">or</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
         {/* generate a form to sign up */}
         <Form {...form}>
           <FormField
