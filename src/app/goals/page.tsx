@@ -31,9 +31,7 @@ const GoalsPage = () => {
     const [goals, setGoals] = useState<GoalTreeNode[] | null>(null);
     const [completingIds, setCompletingIds] = useState<Set<string>>(() => new Set());
 
-    const isAuthedLabel = user?.email
-        ? `Signed in as ${String(user.email)}`
-        : 'Signed in with cookie session';
+    const isAuthedLabel = user?.email ? `Signed in as ${String(user.email)}` : '';
 
     const fetchGoals = useCallback(async () => {
         setGoalsLoading(true);
@@ -129,7 +127,9 @@ const GoalsPage = () => {
             <div className='flex flex-col gap-3 rounded-md border p-5 sm:flex-row sm:items-center sm:justify-between'>
                 <div>
                     <h1 className='text-2xl font-bold'>Goals</h1>
-                    <p className='text-sm text-muted-foreground'>{isAuthedLabel}</p>
+                    {isAuthedLabel ? (
+                        <p className='text-sm text-muted-foreground'>{isAuthedLabel}</p>
+                    ) : null}
                 </div>
 
                 <Button variant='destructive' onClick={handleLogout} disabled={logoutLoading}>
