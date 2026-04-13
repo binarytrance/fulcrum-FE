@@ -1,4 +1,9 @@
 import { create } from "zustand";
+import {
+  createJSONStorage,
+  persist,
+  type StateStorage,
+} from "zustand/middleware";
 
 export type AuthUser = {
   id?: string;
@@ -15,9 +20,30 @@ type AuthState = {
   clearAuth: () => void;
 };
 
-export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  isAuthenticated: false,
-  setUser: (user) => set({ user, isAuthenticated: true }),
-  clearAuth: () => set({ user: null, isAuthenticated: false }),
-}));
+const noopStorage: StateStorage = {
+  getItem: () => null,
+  setItem: () => {},
+  removeItem: () => {},
+};
+
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      user: null,
+      isAuthenticated: false,
+      setUser: (user) => set({ user, isAuthenticated: true }),
+      clearAuth: () => set({ user: null, isAuthenticated: false }),
+    }),
+    {
+      name: "auth-store",
+      storage: createJSONStorage(() => {
+        if (typeof window === "undefined") return noopStorage;
+        return window.localStorage;
+      }),
+      partialize: (state) => ({
+        user: state.user,
+        isAuthenticated: state.isAuthenticated,
+      }),
+    }
+  )
+);
