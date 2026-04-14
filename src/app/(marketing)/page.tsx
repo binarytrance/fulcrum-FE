@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Trophy, CalendarDays, Zap, BarChart3, ArrowRight } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 // ─── Feature data ─────────────────────────────────────────────────────────────
 
@@ -51,21 +52,21 @@ export default function MarketingPage() {
         className="pointer-events-none fixed inset-0 overflow-hidden"
       >
         <div
-          className="absolute -top-64 left-1/2 h-[800px] w-[800px] -translate-x-1/2 rounded-full opacity-[0.07]"
+          className="absolute -top-64 left-1/2 h-[800px] w-[800px] -translate-x-1/2 rounded-full opacity-[0.18] dark:opacity-[0.07]"
           style={{
             background:
               "radial-gradient(circle at center, oklch(0.6 0.25 280) 0%, transparent 70%)",
           }}
         />
         <div
-          className="absolute bottom-0 right-0 h-[600px] w-[600px] translate-x-1/3 translate-y-1/4 rounded-full opacity-[0.05]"
+          className="absolute bottom-0 right-0 h-[600px] w-[600px] translate-x-1/3 translate-y-1/4 rounded-full opacity-[0.13] dark:opacity-[0.05]"
           style={{
             background:
               "radial-gradient(circle at center, oklch(0.65 0.22 320) 0%, transparent 70%)",
           }}
         />
         <div
-          className="absolute top-1/2 left-0 h-[400px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-[0.04]"
+          className="absolute top-1/2 left-0 h-[400px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-[0.10] dark:opacity-[0.04]"
           style={{
             background:
               "radial-gradient(circle at center, oklch(0.65 0.2 160) 0%, transparent 70%)",
@@ -102,6 +103,7 @@ export default function MarketingPage() {
 
           {/* CTA */}
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <Button
               asChild
               variant="ghost"
