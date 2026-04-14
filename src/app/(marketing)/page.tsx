@@ -184,7 +184,7 @@ export default function MarketingPage() {
             <Card
               key={title}
               id={id}
-              className="group relative overflow-hidden border-border/60 bg-card transition-shadow duration-300 hover:shadow-md scroll-mt-72"
+              className="group relative overflow-hidden border-border/60 bg-card transition-all duration-300 hover:-translate-y-1 hover:shadow-md dark:hover:shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_4px_12px_rgba(0,0,0,0.5)] scroll-mt-72"
             >
               {/* Accent glow on hover */}
               <div
