@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -93,6 +95,12 @@ export default function MarketingPage() {
                 <a
                   key={item}
                   href={`#${item.toLowerCase()}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const id = item.toLowerCase();
+                    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+                    window.history.replaceState(null, "", `#${id}`);
+                  }}
                   className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {item}
