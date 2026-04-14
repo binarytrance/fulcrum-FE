@@ -41,9 +41,11 @@ const FEATURES = [
 export default function MarketingPage() {
   return (
     <div className="relative min-h-screen bg-background text-foreground overflow-x-hidden">
-
       {/* ── Ambient background blobs ──────────────────────────────────────── */}
-      <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 overflow-hidden"
+      >
         <div
           className="absolute -top-64 left-1/2 h-[800px] w-[800px] -translate-x-1/2 rounded-full opacity-[0.07]"
           style={{
@@ -81,26 +83,33 @@ export default function MarketingPage() {
 
           {/* Nav links (desktop) */}
           <nav className="hidden md:flex items-center gap-8">
-            {(["Goals", "Planner", "Habits", "Analytics"] as const).map((item) => (
-              <a
-                key={item}
-                href={`#${item.toLowerCase()}`}
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {item}
-              </a>
-            ))}
+            {(["Goals", "Planner", "Habits", "Analytics"] as const).map(
+              (item) => (
+                <a
+                  key={item}
+                  href={`#${item.toLowerCase()}`}
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {item}
+                </a>
+              ),
+            )}
           </nav>
 
           {/* CTA */}
           <div className="flex items-center gap-3">
-            <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="hidden sm:inline-flex"
+            >
               <Link href="/signin">Sign In</Link>
             </Button>
-            <Button asChild size="sm">
+            <Button asChild size="lg">
               <Link href="/signup">
                 Start Free
-                <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                <ArrowRight className="h-3.5 w-3.5 mt-0.5" />
               </Link>
             </Button>
           </div>
@@ -116,9 +125,7 @@ export default function MarketingPage() {
         </div>
 
         {/* Headline */}
-        <h1
-          className="max-w-4xl text-5xl font-extrabold leading-[1.12] tracking-tight sm:text-6xl md:text-7xl lg:text-[5.5rem]"
-        >
+        <h1 className="max-w-4xl text-5xl font-extrabold leading-[1.12] tracking-tight sm:text-6xl md:text-7xl lg:text-[5.5rem]">
           <span
             style={{
               backgroundImage:
@@ -146,7 +153,7 @@ export default function MarketingPage() {
           <Button asChild size="lg" className="min-w-40 rounded-xl shadow-md">
             <Link href="/signup">
               Start Free
-              <ArrowRight className="ml-2 h-4 w-4" />
+              <ArrowRight className="h-4 w-4 mt-0.5" />
             </Link>
           </Button>
           <Button
@@ -169,10 +176,7 @@ export default function MarketingPage() {
       </section>
 
       {/* ── Features ──────────────────────────────────────────────────────── */}
-      <section
-        id="goals"
-        className="mx-auto max-w-6xl px-6 pb-28"
-      >
+      <section id="goals" className="mx-auto max-w-6xl px-6 pb-28">
         {/* Section label */}
         <div className="mb-4 flex items-center justify-center">
           <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
@@ -210,10 +214,7 @@ export default function MarketingPage() {
                   className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl"
                   style={{ background: `${accent}22` }}
                 >
-                  <Icon
-                    className="h-5 w-5"
-                    style={{ color: accent }}
-                  />
+                  <Icon className="h-5 w-5" style={{ color: accent }} />
                 </div>
 
                 <h3 className="mb-2 text-base font-semibold text-card-foreground">
@@ -246,8 +247,8 @@ export default function MarketingPage() {
                 color: "transparent",
               }}
             >
-              &ldquo;Focus is the art of saying no to good things so you can
-              say yes to great ones.&rdquo;
+              &ldquo;Focus is the art of saying no to good things so you can say
+              yes to great ones.&rdquo;
             </p>
             <footer className="mt-6 text-sm text-muted-foreground">
               — The Fulcrum Manifesto
@@ -258,7 +259,7 @@ export default function MarketingPage() {
             <Button asChild size="lg" className="rounded-xl shadow-md">
               <Link href="/signup">
                 Get started for free
-                <ArrowRight className="ml-2 h-4 w-4" />
+                <ArrowRight className="h-4 w-4 mt-0.5" />
               </Link>
             </Button>
             <Button asChild variant="ghost" size="lg" className="rounded-xl">
@@ -310,16 +311,21 @@ export default function MarketingPage() {
           </p>
 
           <nav className="flex items-center gap-5">
-            <Link href="/signin" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+            <Link
+              href="/signin"
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
               Sign In
             </Link>
-            <Link href="/signup" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+            <Link
+              href="/signup"
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
               Sign Up
             </Link>
           </nav>
         </div>
       </footer>
-
     </div>
   );
 }
