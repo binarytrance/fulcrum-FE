@@ -140,22 +140,21 @@ export default function AuthLayout({
       {/* ── Right form panel ─────────────────────────────────────────────── */}
       <div className="flex flex-1 flex-col bg-background">
 
-        {/* Top bar — mobile only (desktop has the toggle in the left panel) */}
-        <div className="flex items-center justify-between px-4 py-3 sm:px-6 lg:justify-end">
+        {/* Top bar — mobile only. lg:hidden on the container so it's
+            completely absent from the DOM on desktop; the left panel
+            header already carries the logo + ThemeToggle there.        */}
+        <div className="flex items-center justify-between px-4 py-3 sm:px-6 lg:hidden">
 
           {/* Mobile logo */}
           <Link
             href="/"
-            className="flex items-center gap-2 font-bold text-foreground transition-opacity hover:opacity-80 lg:hidden"
+            className="flex items-center gap-2 font-bold text-foreground transition-opacity hover:opacity-80"
           >
             <span className="text-xl leading-none">⚡</span>
             <span className="text-base tracking-tight">Fulcrum</span>
           </Link>
 
-          {/* Theme toggle — mobile only (desktop sees it in the left panel) */}
-          <div className="lg:hidden">
-            <ThemeToggle />
-          </div>
+          <ThemeToggle />
         </div>
 
         {/* Centered form area */}
