@@ -8,6 +8,7 @@ import { Trophy, CalendarDays, Zap, BarChart3, ArrowRight } from "lucide-react";
 const FEATURES = [
   {
     icon: Trophy,
+    id: "goals",
     title: "Goals",
     description:
       "Hierarchical goal trees. Break big dreams into actionable sub-goals and track real progress every step of the way.",
@@ -15,6 +16,7 @@ const FEATURES = [
   },
   {
     icon: CalendarDays,
+    id: "planner",
     title: "Daily Planner",
     description:
       "Schedule tasks, track time with a live timer. Watch a plant grow as you focus — a gentle reminder that consistency compounds.",
@@ -22,6 +24,7 @@ const FEATURES = [
   },
   {
     icon: Zap,
+    id: "habits",
     title: "Habits",
     description:
       "Build daily rituals that stick. Track streaks, visualise momentum, and never miss twice.",
@@ -29,6 +32,7 @@ const FEATURES = [
   },
   {
     icon: BarChart3,
+    id: "analytics",
     title: "Analytics",
     description:
       "See where your time really goes. Weekly trends, focus scores, and efficiency tracking — no guesswork.",
@@ -176,7 +180,7 @@ export default function MarketingPage() {
       </section>
 
       {/* ── Features ──────────────────────────────────────────────────────── */}
-      <section id="goals" className="mx-auto max-w-6xl px-6 pb-28">
+      <section className="mx-auto max-w-6xl px-6 pb-28">
         {/* Section label */}
         <div className="mb-4 flex items-center justify-center">
           <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
@@ -194,10 +198,11 @@ export default function MarketingPage() {
 
         {/* Grid */}
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {FEATURES.map(({ icon: Icon, title, description, accent }) => (
+          {FEATURES.map(({ icon: Icon, id, title, description, accent }) => (
             <Card
               key={title}
-              className="group relative overflow-hidden border-border/60 bg-card transition-shadow duration-300 hover:shadow-md"
+              id={id}
+              className="group relative overflow-hidden border-border/60 bg-card transition-shadow duration-300 hover:shadow-md scroll-mt-72"
             >
               {/* Accent glow on hover */}
               <div
