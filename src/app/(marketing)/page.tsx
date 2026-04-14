@@ -284,33 +284,44 @@ export default function MarketingPage() {
 
       {/* ── Footer ────────────────────────────────────────────────────────── */}
       <footer className="border-t border-border/60 bg-background">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 py-8 sm:flex-row">
-          <Link
-            href="/"
-            className="flex items-center gap-2 font-bold text-foreground hover:opacity-80 transition-opacity"
-          >
-            <span className="text-xl leading-none">⚡</span>
-            <span className="text-sm tracking-tight">Fulcrum</span>
-          </Link>
+        <div className="mx-auto max-w-6xl px-6 py-8">
 
-          <p className="text-xs text-muted-foreground/60">
+          {/* ── Single row on desktop ──────────────────────────────────── */}
+          <div className="flex items-center justify-between">
+            <Link
+              href="/"
+              className="flex items-center gap-2 font-bold text-foreground hover:opacity-80 transition-opacity"
+            >
+              <span className="text-xl leading-none">⚡</span>
+              <span className="text-sm tracking-tight">Fulcrum</span>
+            </Link>
+
+            {/* Copyright — hidden on mobile, shown on desktop */}
+            <p className="hidden sm:block text-xs text-muted-foreground/60">
+              © {new Date().getFullYear()} Fulcrum. Built for deep work.
+            </p>
+
+            <nav className="flex items-center gap-5">
+              <Link
+                href="/signin"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/signup"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Sign Up
+              </Link>
+            </nav>
+          </div>
+
+          {/* Copyright — shown on mobile only, below the logo+nav row */}
+          <p className="mt-3 text-xs text-muted-foreground/60 sm:hidden">
             © {new Date().getFullYear()} Fulcrum. Built for deep work.
           </p>
 
-          <nav className="flex items-center gap-5">
-            <Link
-              href="/signin"
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/signup"
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Sign Up
-            </Link>
-          </nav>
         </div>
       </footer>
     </div>
