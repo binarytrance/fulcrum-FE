@@ -3,45 +3,17 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Trophy, CalendarDays, Zap, BarChart3, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
-
-// ─── Feature data ─────────────────────────────────────────────────────────────
-
-const FEATURES = [
-  {
-    icon: Trophy,
-    id: "goals",
-    title: "Goals",
-    description:
-      "Hierarchical goal trees. Break big dreams into actionable sub-goals and track real progress every step of the way.",
-    accent: "oklch(0.65 0.22 260)",
-  },
-  {
-    icon: CalendarDays,
-    id: "planner",
-    title: "Daily Planner",
-    description:
-      "Schedule tasks, track time with a live timer. Watch a plant grow as you focus — a gentle reminder that consistency compounds.",
-    accent: "oklch(0.65 0.18 160)",
-  },
-  {
-    icon: Zap,
-    id: "habits",
-    title: "Habits",
-    description:
-      "Build daily rituals that stick. Track streaks, visualise momentum, and never miss twice.",
-    accent: "oklch(0.7 0.22 80)",
-  },
-  {
-    icon: BarChart3,
-    id: "analytics",
-    title: "Analytics",
-    description:
-      "See where your time really goes. Weekly trends, focus scores, and efficiency tracking — no guesswork.",
-    accent: "oklch(0.65 0.22 320)",
-  },
-] as const;
+import {
+  NAV_LINKS,
+  HERO,
+  FEATURES,
+  FEATURES_SECTION,
+  QUOTE,
+  STATS,
+  FOOTER,
+} from "./data/content";
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -62,23 +34,23 @@ export default function MarketingPage() {
 
           {/* Nav links (desktop) */}
           <nav className="hidden md:flex items-center gap-8">
-            {(["Goals", "Planner", "Habits", "Analytics"] as const).map(
-              (item) => (
-                <a
-                  key={item}
-                  href={`#${item.toLowerCase()}`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    const id = item.toLowerCase();
-                    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-                    window.history.replaceState(null, "", `#${id}`);
-                  }}
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {item}
-                </a>
-              ),
-            )}
+            {NAV_LINKS.map((item) => (
+              <a
+                key={item}
+                href={`#${item.toLowerCase()}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  const id = item.toLowerCase();
+                  document
+                    .getElementById(id)
+                    ?.scrollIntoView({ behavior: "smooth" });
+                  window.history.replaceState(null, "", `#${id}`);
+                }}
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {item}
+              </a>
+            ))}
           </nav>
 
           {/* CTA */}
@@ -107,7 +79,7 @@ export default function MarketingPage() {
         {/* Badge */}
         <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-muted/50 px-4 py-1.5 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur-sm">
           <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
-          Now in early access — free while we build
+          {HERO.badge}
         </div>
 
         {/* Headline */}
@@ -122,16 +94,15 @@ export default function MarketingPage() {
               color: "transparent",
             }}
           >
-            Build the life
+            {HERO.headline1}
           </span>
           <br />
-          <span className="text-foreground">you&apos;ve designed.</span>
+          <span className="text-foreground">{HERO.headline2}</span>
         </h1>
 
         {/* Sub-headline */}
         <p className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-          Fulcrum helps you set goals, build habits, track deep work sessions,
-          and measure what actually matters — so progress becomes inevitable.
+          {HERO.subtext}
         </p>
 
         {/* CTAs */}
@@ -154,7 +125,7 @@ export default function MarketingPage() {
 
         {/* Social proof micro-copy */}
         <p className="mt-6 text-xs text-muted-foreground/70">
-          No credit card required · Cancel anytime
+          {HERO.microcopy}
         </p>
 
         {/* Hero visual separator */}
@@ -166,16 +137,14 @@ export default function MarketingPage() {
         {/* Section label */}
         <div className="mb-4 flex items-center justify-center">
           <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            Everything you need
+            {FEATURES_SECTION.eyebrow}
           </span>
         </div>
         <h2 className="mb-4 text-center text-3xl font-bold tracking-tight sm:text-4xl">
-          One system. Every dimension.
+          {FEATURES_SECTION.headline}
         </h2>
         <p className="mx-auto mb-14 max-w-xl text-center text-sm leading-relaxed text-muted-foreground sm:text-base">
-          Most productivity tools solve one slice of the problem. Fulcrum
-          connects goals, daily execution, habits, and analytics into a single
-          coherent loop.
+          {FEATURES_SECTION.subtext}
         </p>
 
         {/* Grid */}
@@ -216,11 +185,11 @@ export default function MarketingPage() {
         </div>
       </section>
 
-      {/* ── How it works ──────────────────────────────────────────────────── */}
+      {/* ── Quote / Philosophy ────────────────────────────────────────────── */}
       <section className="mx-auto max-w-6xl px-6 pb-28">
         <div className="rounded-3xl border border-border/60 bg-card px-8 py-16 text-center shadow-sm md:px-16">
           <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            The philosophy
+            {QUOTE.eyebrow}
           </div>
           <blockquote className="mx-auto max-w-2xl">
             <p
@@ -234,11 +203,10 @@ export default function MarketingPage() {
                 color: "transparent",
               }}
             >
-              &ldquo;Focus is the art of saying no to good things so you can say
-              yes to great ones.&rdquo;
+              {QUOTE.text}
             </p>
             <footer className="mt-6 text-sm text-muted-foreground">
-              — The Fulcrum Manifesto
+              {QUOTE.attribution}
             </footer>
           </blockquote>
 
@@ -259,14 +227,7 @@ export default function MarketingPage() {
       {/* ── Stats strip ───────────────────────────────────────────────────── */}
       <section className="border-t border-border/60 bg-muted/30">
         <div className="mx-auto grid max-w-6xl grid-cols-2 divide-x divide-border/60 md:grid-cols-4">
-          {(
-            [
-              { value: "∞", label: "Goals, no limit" },
-              { value: "21+", label: "Days to a habit" },
-              { value: "100%", label: "Your data, private" },
-              { value: "0", label: "Fluff, zero noise" },
-            ] as const
-          ).map(({ value, label }) => (
+          {STATS.map(({ value, label }) => (
             <div
               key={label}
               className="flex flex-col items-center justify-center px-6 py-10 text-center"
@@ -285,7 +246,6 @@ export default function MarketingPage() {
       {/* ── Footer ────────────────────────────────────────────────────────── */}
       <footer className="border-t border-border/60 bg-background">
         <div className="mx-auto max-w-6xl px-6 py-8">
-
           {/* ── Single row on desktop ──────────────────────────────────── */}
           <div className="flex items-center justify-between">
             <Link
@@ -298,7 +258,7 @@ export default function MarketingPage() {
 
             {/* Copyright — hidden on mobile, shown on desktop */}
             <p className="hidden sm:block text-xs text-muted-foreground/60">
-              © {new Date().getFullYear()} Fulcrum. Built for deep work.
+              © {new Date().getFullYear()} {FOOTER.copyright}
             </p>
 
             <nav className="flex items-center gap-5">
@@ -317,11 +277,10 @@ export default function MarketingPage() {
             </nav>
           </div>
 
-          {/* Copyright — shown on mobile only, below the logo+nav row */}
+          {/* Copyright — shown on mobile only */}
           <p className="mt-3 text-xs text-muted-foreground/60 sm:hidden">
-            © {new Date().getFullYear()} Fulcrum. Built for deep work.
+            © {new Date().getFullYear()} {FOOTER.copyright}
           </p>
-
         </div>
       </footer>
     </div>

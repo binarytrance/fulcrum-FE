@@ -1,43 +1,34 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { Moon, Sun } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Moon, Sun } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useTheme } from "./theme-provider";
+
+// ─── Component ────────────────────────────────────────────────────────────────
+// Dumb component — owns no state. All theme state lives in ThemeProvider.
+// Multiple instances of this component can exist without race conditions.
 
 export function ThemeToggle() {
-  const [isDark, setIsDark] = useState(false)
-  const [mounted, setMounted] = useState(false)
+  const { theme, mounted, toggle } = useTheme();
 
-  useEffect(() => {
-    setMounted(true)
-    const stored = localStorage.getItem("theme")
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
-    const dark = stored === "dark" || (!stored && prefersDark)
-    setIsDark(dark)
-    document.documentElement.classList.toggle("dark", dark)
-  }, [])
-
-  const toggle = () => {
-    const next = !isDark
-    setIsDark(next)
-    document.documentElement.classList.toggle("dark", next)
-    localStorage.setItem("theme", next ? "dark" : "light")
-  }
-
-  // Prevent layout shift while reading localStorage
-  if (!mounted) return <div className="size-9" />
+  // Render an invisible placeholder before mount to prevent layout shift.
+  // ThemeProvider handles reading localStorage and applying the class.
+  if (!mounted) return <div className="size-9" />;
 
   return (
     <Button
       variant="ghost"
       size="icon"
       onClick={toggle}
-      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-    >
-      {isDark
-        ? <Sun className="h-4 w-4" />
-        : <Moon className="h-4 w-4" />
+      aria-label={
+        theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
       }
+    >
+      {theme === "dark" ? (
+        <Sun className="h-4 w-4" />
+      ) : (
+        <Moon className="h-4 w-4" />
+      )}
     </Button>
-  )
+  );
 }
