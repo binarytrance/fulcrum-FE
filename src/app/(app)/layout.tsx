@@ -1,29 +1,29 @@
-"use client"
+"use client";
 
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { useAuthStore } from "@/store/auth-store"
-import { getAccessToken } from "@/lib/api"
-import { AppSidebar } from "@/components/layout/AppSidebar"
-import { Toaster } from "@/components/ui/toast"
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/store/auth-store";
+import { getAccessToken } from "@/lib/api";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter()
-  const isAuthenticated = useAuthStore(s => s.isAuthenticated)
+  const router = useRouter();
+  const { isAuthenticated, hydrate } = useAuthStore(s => ({
+    isAuthenticated: s.isAuthenticated,
+    hydrate: s.hydrate,
+  }));
 
   useEffect(() => {
-    if (!isAuthenticated && !getAccessToken()) {
-      router.replace("/signin")
-    }
-  }, [isAuthenticated, router])
+    // If we already have an in-memory access token, we're good.
+    if (isAuthenticated || getAccessToken()) return;
 
-  return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <AppSidebar />
-      <main className="flex-1 overflow-y-auto">
-        {children}
-      </main>
-      <Toaster />
-    </div>
-  )
+    // Otherwise try to rehydrate from the HttpOnly refresh-token cookie.
+    // hydrate() calls /auth/refresh — if it fails the user isn't logged in.
+    hydrate().then(() => {
+      if (!useAuthStore.getState().isAuthenticated) {
+        router.replace("/signin");
+      }
+    });
+  }, [isAuthenticated, hydrate, router]);
+
+  return <>{children}</>;
 }
