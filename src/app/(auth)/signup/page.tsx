@@ -20,6 +20,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { GoogleSignupButton } from "./components/GoogleSignupButton";
+import { GitHubSignupButton } from "./components/GitHubSignupButton";
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -106,7 +107,10 @@ export default function SignUpPage() {
       {/* ── Card ────────────────────────────────────────────────────────── */}
       <div className="rounded-2xl border border-border bg-card p-7 shadow-sm">
         {/* OAuth */}
-        <GoogleSignupButton />
+        <div className="space-y-2.5">
+          <GoogleSignupButton />
+          <GitHubSignupButton />
+        </div>
 
         {/* Divider */}
         <div className="my-5 flex items-center gap-3">

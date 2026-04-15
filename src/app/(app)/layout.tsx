@@ -7,10 +7,8 @@ import { getAccessToken } from "@/lib/api";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { isAuthenticated, hydrate } = useAuthStore(s => ({
-    isAuthenticated: s.isAuthenticated,
-    hydrate: s.hydrate,
-  }));
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated);
+  const hydrate = useAuthStore(s => s.hydrate);
 
   useEffect(() => {
     // If we already have an in-memory access token, we're good.
