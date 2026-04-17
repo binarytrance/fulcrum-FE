@@ -660,23 +660,92 @@ export default function DashboardPage() {
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-full bg-background">
-      <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+    <div className="relative min-h-full overflow-x-clip bg-background">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-24 left-1/2 h-72 w-[42rem] -translate-x-1/2 rounded-full opacity-25 blur-3xl"
+        style={{
+          background:
+            "radial-gradient(circle, oklch(0.6 0.25 280) 0%, transparent 65%)",
+        }}
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute right-[-10rem] top-[20rem] h-80 w-80 rounded-full opacity-20 blur-3xl"
+        style={{
+          background:
+            "radial-gradient(circle, oklch(0.65 0.22 320) 0%, transparent 65%)",
+        }}
+      />
+
+      <div className="relative mx-auto max-w-7xl space-y-6 px-4 py-6 sm:space-y-8 sm:px-6 sm:py-8 lg:px-8">
 
         {/* ── Header ──────────────────────────────────────────────────────── */}
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            {getGreeting()}
-            {user?.firstname ? `, ${user.firstname}` : ""}! 👋
-          </h1>
-          <p className="mt-1 text-muted-foreground flex items-center gap-1.5 text-sm">
-            <Calendar className="h-4 w-4" />
-            {formatToday()}
-          </p>
+        <div className="relative overflow-hidden rounded-3xl border border-border/70 bg-card/70 p-5 backdrop-blur-sm sm:p-7">
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 opacity-60"
+            style={{
+              background:
+                "linear-gradient(130deg, rgba(129,140,248,0.18) 0%, rgba(192,132,252,0.12) 48%, rgba(244,114,182,0.18) 100%)",
+            }}
+          />
+
+          <div className="relative flex flex-col gap-4 sm:gap-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">
+                  {getGreeting()}
+                  {user?.firstname ? `, ${user.firstname}` : ""}! 👋
+                </h1>
+                <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Calendar className="h-4 w-4" />
+                  {formatToday()}
+                </p>
+              </div>
+
+              <Badge
+                variant="secondary"
+                className="w-fit border border-border/60 bg-background/70 px-2.5 py-1 text-[11px]"
+              >
+                <TrendingUp className="mr-1 h-3.5 w-3.5" />
+                Build momentum daily
+              </Badge>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" className="h-8 gap-1.5" asChild>
+                <Link href="/tasks">
+                  <Timer className="h-3.5 w-3.5" />
+                  Start focus block
+                </Link>
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 gap-1.5 bg-background/70"
+                onClick={() => setManualSessionOpen(true)}
+              >
+                <Clock className="h-3.5 w-3.5" />
+                Log session
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 gap-1.5"
+                asChild
+              >
+                <Link href="/goals">
+                  <Target className="h-3.5 w-3.5" />
+                  Review goals
+                </Link>
+              </Button>
+            </div>
+          </div>
         </div>
 
         {/* ── Stat Cards ──────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4">
           <StatCard
             icon={Clock}
             label="Focus Time Today"
@@ -736,10 +805,10 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Main + Sidebar Grid ──────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
+        <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-12">
 
           {/* ── Left / Main (2 cols) ───────────────────────────────────── */}
-          <div className="xl:col-span-2 space-y-6">
+          <div className="space-y-6 xl:col-span-8">
 
             {/* Today's Habits */}
             <section>
@@ -772,7 +841,7 @@ export default function DashboardPage() {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory">
+                <div className="scrollbar-none -mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-2">
                   {todaysHabits.map((h) => (
                     <div key={h.id} className="snap-start">
                       <TodayHabitCard
@@ -844,7 +913,7 @@ export default function DashboardPage() {
           </div>
 
           {/* ── Right Sidebar (1 col) ──────────────────────────────────── */}
-          <div className="space-y-5">
+          <div className="space-y-5 xl:col-span-4 xl:sticky xl:top-6">
 
             {/* Quick Actions */}
             <Card>

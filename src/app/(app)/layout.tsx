@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth-store";
 import { getAccessToken } from "@/lib/api";
+import { AppSidebar } from "@/components/layout/AppSidebar";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -11,11 +12,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const hydrate = useAuthStore(s => s.hydrate);
 
   useEffect(() => {
-    // If we already have an in-memory access token, we're good.
     if (isAuthenticated || getAccessToken()) return;
 
-    // Otherwise try to rehydrate from the HttpOnly refresh-token cookie.
-    // hydrate() calls /auth/refresh — if it fails the user isn't logged in.
     hydrate().then(() => {
       if (!useAuthStore.getState().isAuthenticated) {
         router.replace("/signin");
@@ -23,5 +21,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     });
   }, [isAuthenticated, hydrate, router]);
 
-  return <>{children}</>;
+  return (
+    <div className="flex h-dvh overflow-hidden bg-background">
+      <AppSidebar />
+      <main className="flex-1 overflow-y-auto lg:overflow-y-scroll lg:scrollbar-none pt-16 lg:pt-0">
+        {children}
+      </main>
+    </div>
+  );
 }

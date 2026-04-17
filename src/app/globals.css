@@ -141,3 +141,14 @@
     oklch(0.12 0.035 315) 100%
   );
 }
+
+/* ─── Scrollbar utilities ─────────────────────────────────────────────────────
+   Use .scrollbar-none on any scrollable container to hide the scrollbar
+   while keeping scroll functionality intact.                                  */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}

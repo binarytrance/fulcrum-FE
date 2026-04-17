@@ -2,9 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import {
-  ArrowLeft,
   Monitor,
   Smartphone,
   Globe,
@@ -12,6 +10,9 @@ import {
   LogOut,
   Trash2,
   ShieldAlert,
+  ShieldCheck,
+  Clock3,
+  Sparkles,
 } from "lucide-react";
 
 import { useAuthStore } from "@/store/auth-store";
@@ -121,23 +122,74 @@ export default function SessionsPage() {
     }
   };
 
+  const currentSession = sessions.find((s) => s.current) ?? null;
+
   return (
-    <div className="mx-auto min-h-screen max-w-2xl px-4 py-10">
+    <div className="relative mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-1/2 top-0 h-64 w-[42rem] -translate-x-1/2 rounded-full opacity-20 blur-3xl"
+        style={{
+          background:
+            "radial-gradient(circle, oklch(0.6 0.25 280) 0%, transparent 68%)",
+        }}
+      />
+
       {/* Header */}
-      <div className="mb-8 flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild className="shrink-0">
-          <Link href="/dashboard">
-            <ArrowLeft className="h-4 w-4" />
-            <span className="sr-only">Back to dashboard</span>
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Active sessions</h1>
-          <p className="text-sm text-muted-foreground">
-            Devices currently signed in to your Fulcrum account.
-          </p>
+      <div className="relative mb-5 overflow-hidden rounded-3xl border border-border/70 bg-card/80 p-5 backdrop-blur-sm sm:p-6">
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 opacity-60"
+          style={{
+            background:
+              "linear-gradient(130deg, rgba(129,140,248,0.18) 0%, rgba(192,132,252,0.12) 48%, rgba(244,114,182,0.18) 100%)",
+          }}
+        />
+
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">Active sessions</h1>
+              <p className="text-sm text-muted-foreground">
+                Devices currently signed in to your Fulcrum account.
+              </p>
+            </div>
+          </div>
+
+          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs font-medium text-violet-700 dark:text-violet-400">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            {sessions.length || 0} active
+          </div>
         </div>
       </div>
+
+      {!loading && !error && sessions.length > 0 && (
+        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-border/60 bg-card/80 px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Total devices
+            </p>
+            <p className="mt-1 text-2xl font-bold">{sessions.length}</p>
+          </div>
+          <div className="rounded-2xl border border-border/60 bg-card/80 px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Current device
+            </p>
+            <p className="mt-1 truncate text-sm font-semibold">
+              {parseBrowser(currentSession?.userAgent ?? null)}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-border/60 bg-card/80 px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Security status
+            </p>
+            <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-violet-700 dark:text-violet-400">
+              <Sparkles className="h-3.5 w-3.5" />
+              Protected
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Loading */}
       {loading && (
@@ -158,35 +210,45 @@ export default function SessionsPage() {
       {/* Session list */}
       {!loading && !error && (
         <>
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {sessions.map((session) => (
               <Card
                 key={session.sessionId}
                 className={
                   session.current
-                    ? "border-primary/40 bg-primary/5"
-                    : "border-border"
+                    ? "overflow-hidden border-primary/40 bg-primary/5 shadow-sm"
+                    : "overflow-hidden border-border/70 bg-card/85 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
                 }
               >
+                {session.current && (
+                  <div
+                    className="h-1 w-full"
+                    style={{
+                      background:
+                        "linear-gradient(90deg, #818cf8 0%, #c084fc 45%, #f472b6 100%)",
+                    }}
+                  />
+                )}
+
                 <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
                         {guessDeviceIcon(session.userAgent)}
                       </div>
                       <div>
-                        <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                        <CardTitle className="flex items-center gap-2 text-sm font-semibold sm:text-base">
                           {parseBrowser(session.userAgent)}
                           {session.current && (
-                            <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-medium text-primary-foreground">
+                            <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-400">
                               This device
                             </span>
                           )}
                         </CardTitle>
-                        <CardDescription className="text-xs">
+                        <CardDescription className="text-xs sm:text-[13px]">
                           {session.ipAddress ?? "Unknown IP"} ·{" "}
                           {session.userAgent
-                            ? session.userAgent.slice(0, 60) + (session.userAgent.length > 60 ? "…" : "")
+                            ? session.userAgent.slice(0, 72) + (session.userAgent.length > 72 ? "…" : "")
                             : "Unknown user agent"}
                         </CardDescription>
                       </div>
@@ -195,7 +257,7 @@ export default function SessionsPage() {
                     <Button
                       variant={session.current ? "destructive" : "ghost"}
                       size="sm"
-                      className="shrink-0 text-xs"
+                      className="shrink-0 text-xs sm:min-w-24"
                       disabled={revoking === session.sessionId || revokingAll}
                       onClick={() => handleRevoke(session.sessionId, session.current)}
                     >
@@ -217,10 +279,13 @@ export default function SessionsPage() {
                 </CardHeader>
 
                 <CardContent className="pb-4 text-xs text-muted-foreground">
-                  <div className="flex flex-wrap gap-x-4 gap-y-1">
-                    <span>Signed in {formatDate(session.createdAt)}</span>
-                    <span>Last active {formatDate(session.lastRotatedAt)}</span>
-                    <span>Expires {formatDate(session.expiresAt)}</span>
+                  <div className="grid gap-2 text-[11px] sm:grid-cols-3 sm:text-xs">
+                    <div className="inline-flex items-center gap-1.5">
+                      <Clock3 className="h-3.5 w-3.5" />
+                      Signed in {formatDate(session.createdAt)}
+                    </div>
+                    <div>Last active {formatDate(session.lastRotatedAt)}</div>
+                    <div>Expires {formatDate(session.expiresAt)}</div>
                   </div>
                 </CardContent>
               </Card>
@@ -229,7 +294,7 @@ export default function SessionsPage() {
 
           {/* Sign out all */}
           {sessions.length > 1 && (
-            <div className="mt-8 rounded-xl border border-destructive/20 bg-destructive/5 p-5">
+            <div className="mt-5 rounded-2xl border border-destructive/20 bg-destructive/5 p-5">
               <p className="text-sm font-medium text-foreground">
                 Sign out all devices
               </p>
