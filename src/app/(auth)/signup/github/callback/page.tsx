@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 
 // ─── Inner content ────────────────────────────────────────────────────────────
 
-function GoogleSigninCallbackContent() {
+function GitHubSignupCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const setUser = useAuthStore((s) => s.setUser);
@@ -24,26 +24,25 @@ function GoogleSigninCallbackContent() {
 
     async function finish() {
       // The backend redirects here with a short-lived one-time code.
-      // e.g. /signin/google/callback?code=ONE_TIME_CODE
+      // e.g. /signup/github/callback?code=ONE_TIME_CODE
       const code = searchParams.get("code");
-
-      // Legacy / error path: backend might still send ?error=oauth_failed
       const oauthError = searchParams.get("error");
+
       if (oauthError) {
-        setError("Google sign in failed. Please try again.");
+        setError("GitHub sign up failed. Please try again.");
         setLoading(false);
         return;
       }
 
       if (!code) {
-        setError("Missing authentication code. Please try signing in again.");
+        setError("Missing authentication code. Please try signing up again.");
         setLoading(false);
         return;
       }
 
       const codeVerifier = consumeCodeVerifier();
       if (!codeVerifier) {
-        setError("Missing PKCE verifier. Please try signing in again.");
+        setError("Missing PKCE verifier. Please try signing up again.");
         setLoading(false);
         return;
       }
@@ -58,7 +57,7 @@ function GoogleSigninCallbackContent() {
         setError(
           err instanceof Error
             ? err.message
-            : "Could not complete Google sign in. Please try again.",
+            : "Could not complete GitHub sign up. Please try again.",
         );
         setLoading(false);
       }
@@ -70,32 +69,39 @@ function GoogleSigninCallbackContent() {
     };
   }, [searchParams, router, setUser]);
 
-  // ── Error state ──────────────────────────────────────────────────────────────
+  // ── Error state ───────────────────────────────────────────────────────────
+
   if (error) {
     return (
       <div className="mx-auto flex min-h-[70vh] w-full max-w-md flex-col items-center justify-center px-4 text-center">
         <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10">
           <span className="text-2xl">✕</span>
         </div>
-        <h1 className="text-2xl font-bold">Google Sign In Failed</h1>
+        <h1 className="text-2xl font-bold">GitHub Sign Up Failed</h1>
         <p className="mt-3 text-sm text-destructive">{error}</p>
-        <Button asChild className="mt-6" variant="secondary">
-          <Link href="/signin">Try again</Link>
-        </Button>
+        <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
+          <Button asChild variant="secondary">
+            <Link href="/signup">Try again</Link>
+          </Button>
+          <Button asChild variant="ghost">
+            <Link href="/signin">Sign in instead</Link>
+          </Button>
+        </div>
       </div>
     );
   }
 
-  // ── Loading state ─────────────────────────────────────────────────────────────
+  // ── Loading state ─────────────────────────────────────────────────────────
+
   if (loading) {
     return (
       <div className="mx-auto flex min-h-[70vh] w-full max-w-md flex-col items-center justify-center px-4 text-center">
         <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-border border-t-foreground" />
         </div>
-        <h1 className="text-2xl font-bold">Completing Google Sign In</h1>
+        <h1 className="text-2xl font-bold">Completing GitHub Sign Up</h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          Please wait while we finish authentication…
+          Please wait while we set up your account…
         </p>
       </div>
     );
@@ -106,7 +112,7 @@ function GoogleSigninCallbackContent() {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function GoogleSigninCallbackPage() {
+export default function GitHubSignupCallbackPage() {
   return (
     <Suspense
       fallback={
@@ -114,12 +120,12 @@ export default function GoogleSigninCallbackPage() {
           <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-border border-t-foreground" />
           </div>
-          <h1 className="text-2xl font-bold">Completing Google Sign In</h1>
+          <h1 className="text-2xl font-bold">Completing GitHub Sign Up</h1>
           <p className="mt-3 text-sm text-muted-foreground">Please wait…</p>
         </div>
       }
     >
-      <GoogleSigninCallbackContent />
+      <GitHubSignupCallbackContent />
     </Suspense>
   );
 }
