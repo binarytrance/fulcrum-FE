@@ -18,8 +18,14 @@ export function buildAppUrl(path: string): string {
     return `${origin}${normalizedPath}`;
 }
 
-export function buildOAuthStartUrl(provider: string, redirectPath: string): string {
+export function buildOAuthStartUrl(
+    provider: string,
+    redirectPath: string,
+    codeChallenge: string,
+): string {
     const url = new URL(buildAuthApiUrl(provider));
     url.searchParams.set('redirect_uri', buildAppUrl(redirectPath));
+    url.searchParams.set('code_challenge', codeChallenge);
+    url.searchParams.set('code_challenge_method', 'S256');
     return url.toString();
 }

@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 import { useAuthStore } from "@/store/auth-store";
-import { completeAuthWithTokens } from "@/utils/complete-auth";
+import { exchangeOAuthCode } from "@/utils/complete-auth";
+import { consumeCodeVerifier } from "@/utils/pkce";
 import { Button } from "@/components/ui/button";
 
 // ─── Inner content ────────────────────────────────────────────────────────────
@@ -13,7 +14,7 @@ import { Button } from "@/components/ui/button";
 function GoogleSignupCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const setAuth = useAuthStore((s) => s.setAuth);
+  const setUser = useAuthStore((s) => s.setUser);
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -22,11 +23,9 @@ function GoogleSignupCallbackContent() {
     let cancelled = false;
 
     async function finish() {
-      // The backend redirects here with tokens in the query string.
-      // e.g. /signup/google/callback?accessToken=X&refreshToken=Y
-      // (Google sign-up and sign-in share the same backend OAuth flow —
-      //  the backend upserts the user, so both are handled identically.)
-      const accessToken = searchParams.get("accessToken");
+      // The backend redirects here with a short-lived one-time code.
+      // e.g. /signup/google/callback?code=ONE_TIME_CODE
+      const code = searchParams.get("code");
 
       // Error path: backend might send ?error=oauth_failed
       const oauthError = searchParams.get("error");
@@ -36,16 +35,23 @@ function GoogleSignupCallbackContent() {
         return;
       }
 
-      if (!accessToken) {
-        setError("Missing authentication token. Please try signing up again.");
+      if (!code) {
+        setError("Missing authentication code. Please try signing up again.");
+        setLoading(false);
+        return;
+      }
+
+      const codeVerifier = consumeCodeVerifier();
+      if (!codeVerifier) {
+        setError("Missing PKCE verifier. Please try signing up again.");
         setLoading(false);
         return;
       }
 
       try {
-        const user = await completeAuthWithTokens(accessToken);
+        const user = await exchangeOAuthCode(code, codeVerifier);
         if (cancelled) return;
-        setAuth(user, accessToken);
+        setUser(user);
         router.replace("/dashboard");
       } catch (err) {
         if (cancelled) return;
@@ -62,7 +68,7 @@ function GoogleSignupCallbackContent() {
     return () => {
       cancelled = true;
     };
-  }, [searchParams, router, setAuth]);
+  }, [searchParams, router, setUser]);
 
   // ── Error state ───────────────────────────────────────────────────────────────
   if (error) {

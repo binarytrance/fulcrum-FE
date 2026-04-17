@@ -1,6 +1,7 @@
 "use client";
 
 import { buildOAuthStartUrl, GOOGLE_SIGNUP_CALLBACK_PATH } from "@/utils/auth";
+import { generateCodeVerifier, generateCodeChallenge, saveCodeVerifier } from "@/utils/pkce";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 
@@ -45,11 +46,14 @@ export function GoogleSignupButton({ className }: GoogleSignupButtonProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleClick = () => {
+  const handleClick = async () => {
     try {
       setLoading(true);
       setError(null);
-      const authStartUrl = buildOAuthStartUrl("/google", GOOGLE_SIGNUP_CALLBACK_PATH);
+      const verifier = generateCodeVerifier();
+      const challenge = await generateCodeChallenge(verifier);
+      saveCodeVerifier(verifier);
+      const authStartUrl = buildOAuthStartUrl("/google", GOOGLE_SIGNUP_CALLBACK_PATH, challenge);
       window.location.assign(authStartUrl);
     } catch {
       setLoading(false);

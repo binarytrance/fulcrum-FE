@@ -1,6 +1,7 @@
 "use client";
 
 import { buildOAuthStartUrl } from "@/utils/auth";
+import { generateCodeVerifier, generateCodeChallenge, saveCodeVerifier } from "@/utils/pkce";
 import { Github, Loader2 } from "lucide-react";
 import { useState } from "react";
 
@@ -14,12 +15,15 @@ export function GitHubSigninButton({ className }: GitHubSigninButtonProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleClick = () => {
+  const handleClick = async () => {
     try {
       setLoading(true);
       setError(null);
+      const verifier = generateCodeVerifier();
+      const challenge = await generateCodeChallenge(verifier);
+      saveCodeVerifier(verifier);
       window.location.assign(
-        buildOAuthStartUrl("/github", GITHUB_SIGNIN_CALLBACK_PATH)
+        buildOAuthStartUrl("/github", GITHUB_SIGNIN_CALLBACK_PATH, challenge)
       );
     } catch {
       setLoading(false);

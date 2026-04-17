@@ -15,14 +15,37 @@ type MeApiResponse = {
 };
 
 /**
- * Given a fresh access token (the backend manages the refresh token via
- * an HttpOnly cookie — we never touch it on the frontend):
- *  1. Stores the access token in memory via setAccessToken.
- *  2. Calls GET /auth/me with the access token.
- *  3. Returns the user profile.
- *
- * Throws an Error with a human-readable message on any failure.
+ * Exchanges a one-time OAuth code + PKCE code_verifier for an access token.
+ * The backend verifies PKCE, returns the access token in the response body,
+ * and sets the refresh token as an HttpOnly cookie.
  */
+export async function exchangeOAuthCode(
+  code: string,
+  codeVerifier: string,
+): Promise<AuthUser> {
+  const response = await fetch(`${API_BASE}/auth/oauth/exchange`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    credentials: 'include', // so the backend can set the refresh cookie
+    body: JSON.stringify({ code, code_verifier: codeVerifier }),
+  });
+
+  let payload: { success: boolean; message: string; data?: { accessToken: string } };
+  try {
+    payload = (await response.json()) as typeof payload;
+  } catch {
+    throw new Error('Unexpected response from server during token exchange.');
+  }
+
+  if (!response.ok || !payload.success || !payload.data?.accessToken) {
+    throw new Error(
+      payload.message || 'Token exchange failed. Please sign in again.',
+    );
+  }
+
+  return completeAuthWithTokens(payload.data.accessToken);
+}
+
 export async function completeAuthWithTokens(
   accessToken: string,
 ): Promise<AuthUser> {
