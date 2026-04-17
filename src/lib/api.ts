@@ -1,7 +1,7 @@
 const API_BASE = "http://localhost:6969/api/v1";
 
 // ---------------------------------------------------------------------------
-// NestJS response envelope — every endpoint returns this shape
+// NestJS response envelope -- every endpoint returns this shape
 // ---------------------------------------------------------------------------
 
 type ApiEnvelope<T = unknown> = {
@@ -40,7 +40,7 @@ export async function unwrapApiResponse<T>(response: Response): Promise<T> {
 }
 
 // ---------------------------------------------------------------------------
-// In-memory access token — never touches localStorage or sessionStorage.
+// In-memory access token -- never touches localStorage or sessionStorage.
 // The refresh token lives exclusively in an HttpOnly cookie managed by the
 // backend; the frontend never reads or writes it directly.
 // ---------------------------------------------------------------------------
@@ -60,7 +60,48 @@ export function clearAccessToken(): void {
 }
 
 // ---------------------------------------------------------------------------
-// Error parsing helper — exported so API modules can reuse it
+// Token refresh -- singleton promise lock prevents concurrent refresh races.
+// If 3 API calls all hit 401 at the same moment, only ONE refresh fires;
+// the other two await the same promise and get the new token for free.
+// ---------------------------------------------------------------------------
+
+let _refreshPromise: Promise<string | null> | null = null;
+
+export async function refreshAccessToken(): Promise<string | null> {
+  if (_refreshPromise) return _refreshPromise;
+
+  _refreshPromise = fetch(`${API_BASE}/auth/refresh`, {
+    method: "POST",
+    credentials: "include",
+  })
+    .then(async (res) => {
+      if (!res.ok) {
+        clearAccessToken();
+        return null;
+      }
+      const envelope = (await res.json()) as ApiEnvelope<{
+        accessToken: string;
+      }>;
+      if (!envelope.success || !envelope.data?.accessToken) {
+        clearAccessToken();
+        return null;
+      }
+      setAccessToken(envelope.data.accessToken);
+      return envelope.data.accessToken;
+    })
+    .catch(() => {
+      clearAccessToken();
+      return null;
+    })
+    .finally(() => {
+      _refreshPromise = null;
+    });
+
+  return _refreshPromise;
+}
+
+// ---------------------------------------------------------------------------
+// Error parsing helper -- exported so API modules can reuse it
 // ---------------------------------------------------------------------------
 
 export async function parseApiError(response: Response): Promise<never> {
@@ -76,7 +117,7 @@ export async function parseApiError(response: Response): Promise<never> {
       message = body.error;
     }
   } catch {
-    // Response body is not JSON — keep the default message
+    // Response body is not JSON -- keep the default message
   }
   throw new Error(message);
 }
@@ -91,7 +132,7 @@ function buildHeaders(
 ): Record<string, string> {
   const headers: Record<string, string> = {};
 
-  // Merge caller-supplied headers first so we don't accidentally override them
+  // Merge caller-supplied headers first so we do not accidentally override them
   if (init.headers) {
     if (init.headers instanceof Headers) {
       init.headers.forEach((value, key) => {
@@ -132,20 +173,20 @@ function buildHeaders(
  *
  * - Automatically attaches `Authorization: Bearer <accessToken>`.
  * - Adds `Content-Type: application/json` when a body is present.
- * - Sends `credentials: 'include'` on every request so the browser
+ * - Sends `credentials: include` on every request so the browser
  *   automatically attaches the HttpOnly refresh-token cookie.
- * - On a 401 response it attempts a silent token refresh by POST-ing to
- *   `/auth/refresh` with `credentials: 'include'` — no token in the body;
- *   the browser sends the HttpOnly cookie automatically.
+ * - On a 401 response it attempts a silent token refresh via
+ *   `refreshAccessToken()`, which is locked so concurrent 401s share
+ *   one refresh call.
  * - If the refresh succeeds the original request is retried once with the
  *   new access token.
- * - If the refresh itself fails (network error or non-OK status) the
- *   in-memory access token is cleared and `Error('SESSION_EXPIRED')` is
- *   thrown so callers / global error boundaries can redirect to sign-in.
+ * - If the refresh itself fails the in-memory access token is cleared and
+ *   `Error(SESSION_EXPIRED)` is thrown so callers / global error
+ *   boundaries can redirect to sign-in.
  *
  * @param path  API path relative to the base URL, e.g. `/goals`
- * @param init  Standard `RequestInit` options (method, body, headers, …)
- * @returns     The raw `Response` — callers decide how to parse it
+ * @param init  Standard `RequestInit` options (method, body, headers, ...)
+ * @returns     The raw `Response` -- callers decide how to parse it
  */
 export async function apiFetch(
   path: string,
@@ -161,56 +202,26 @@ export async function apiFetch(
     credentials: "include",
   });
 
-  // Happy path — return immediately
+  // Happy path -- return immediately
   if (response.status !== 401) {
     return response;
   }
 
   // -------------------------------------------------------------------------
-  // 401 → attempt silent token refresh via HttpOnly cookie.
-  // We do NOT send a refresh token in the request body — the browser sends
-  // the HttpOnly cookie automatically because of `credentials: 'include'`.
+  // 401 -> attempt silent token refresh via HttpOnly cookie.
+  // refreshAccessToken() is locked -- concurrent 401s share one refresh call.
   // -------------------------------------------------------------------------
 
-  let refreshResponse: Response;
-  try {
-    refreshResponse = await fetch(`${API_BASE}/auth/refresh`, {
-      method: "POST",
-      credentials: "include",
-    });
-  } catch {
-    // Network-level failure during refresh
-    clearAccessToken();
+  const newToken = await refreshAccessToken();
+
+  if (!newToken) {
     throw new Error("SESSION_EXPIRED");
   }
-
-  if (!refreshResponse.ok) {
-    clearAccessToken();
-    throw new Error("SESSION_EXPIRED");
-  }
-
-  let envelope: ApiEnvelope<{ accessToken: string }>;
-  try {
-    envelope = (await refreshResponse.json()) as ApiEnvelope<{
-      accessToken: string;
-    }>;
-  } catch {
-    clearAccessToken();
-    throw new Error("SESSION_EXPIRED");
-  }
-
-  if (!envelope.success || !envelope.data?.accessToken) {
-    clearAccessToken();
-    throw new Error("SESSION_EXPIRED");
-  }
-
-  // Persist the new access token in memory
-  setAccessToken(envelope.data.accessToken);
 
   // Retry the original request with the fresh access token
   const retryHeaders = {
     ...headers,
-    Authorization: `Bearer ${envelope.data.accessToken}`,
+    Authorization: `Bearer ${newToken}`,
   };
   response = await fetch(url, {
     ...init,

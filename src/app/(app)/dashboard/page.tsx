@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Zap, LogOut, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { Zap, LogOut, Loader2, Monitor } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
-import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 
 export default function DashboardPage() {
@@ -16,11 +16,8 @@ export default function DashboardPage() {
   const handleSignOut = async () => {
     setLoggingOut(true);
     try {
-      await apiFetch("/auth/signout", { method: "POST" });
-    } catch {
-      // Sign out locally even if the network call fails
+      await clearAuth();
     } finally {
-      clearAuth();
       router.replace("/signin");
     }
   };
@@ -64,21 +61,30 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Sign-out */}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={handleSignOut}
-        disabled={loggingOut}
-        className="text-muted-foreground hover:text-destructive"
-      >
-        {loggingOut ? (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        ) : (
-          <LogOut className="mr-2 h-4 w-4" />
-        )}
-        {loggingOut ? "Signing out…" : "Sign out"}
-      </Button>
+      {/* Actions */}
+      <div className="flex items-center gap-3">
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/sessions">
+            <Monitor className="mr-2 h-4 w-4" />
+            Manage sessions
+          </Link>
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleSignOut}
+          disabled={loggingOut}
+          className="text-muted-foreground hover:text-destructive"
+        >
+          {loggingOut ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <LogOut className="mr-2 h-4 w-4" />
+          )}
+          {loggingOut ? "Signing out…" : "Sign out"}
+        </Button>
+      </div>
     </div>
   );
 }

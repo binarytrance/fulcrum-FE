@@ -111,7 +111,7 @@ function VerifyEmailContent() {
     setResendSent(false);
 
     try {
-      await authApiFetch('/signup/resend-verification', {
+      await authApiFetch('/resend-verification', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ email }),

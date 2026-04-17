@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { setAccessToken, clearAccessToken } from '../lib/api'
+import { setAccessToken, clearAccessToken, refreshAccessToken, apiFetch } from '../lib/api'
 import type { AuthUser } from '../types'
 
 export type { AuthUser }
@@ -11,7 +11,17 @@ type AuthState = {
   isAuthenticated: boolean
   setAuth: (user: AuthUser, accessToken: string) => void
   setUser: (user: AuthUser) => void
+  /**
+   * Sign out the current session: revokes the refresh token cookie on the
+   * backend then clears local state.  Always call this instead of calling
+   * /auth/signout manually from UI code.
+   */
   clearAuth: () => Promise<void>
+  /**
+   * Sign out ALL sessions for this user (calls POST /auth/signout-all with
+   * the access token), then clears local state.
+   */
+  signoutAll: () => Promise<void>
   hydrate: () => Promise<void>
 }
 
@@ -27,8 +37,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   setUser: (user) => set({ user, isAuthenticated: true }),
 
   clearAuth: async () => {
+    // Clear local state immediately so the UI responds instantly
     clearAccessToken()
     set({ user: null, isAuthenticated: false })
+    // Revoke the refresh token cookie on the backend (uses HttpOnly cookie, not Bearer)
     try {
       await fetch(`${API_BASE}/auth/signout`, {
         method: 'POST',
@@ -39,24 +51,21 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
+  signoutAll: async () => {
+    // Revoke all sessions via access token before clearing local state
+    try {
+      await apiFetch('/auth/signout-all', { method: 'POST' })
+    } catch {
+      // Proceed with local clear even if network fails
+    }
+    clearAccessToken()
+    set({ user: null, isAuthenticated: false })
+  },
+
   hydrate: async () => {
     try {
-      const refreshResponse = await fetch(`${API_BASE}/auth/refresh`, {
-        method: 'POST',
-        credentials: 'include',
-      })
-
-      if (!refreshResponse.ok) return
-
-      const refreshEnvelope = (await refreshResponse.json()) as {
-        success: boolean
-        data?: { accessToken: string }
-      }
-
-      if (!refreshEnvelope.success || !refreshEnvelope.data?.accessToken) return
-
-      const { accessToken } = refreshEnvelope.data
-      setAccessToken(accessToken)
+      const accessToken = await refreshAccessToken()
+      if (!accessToken) return
 
       const meResponse = await fetch(`${API_BASE}/auth/me`, {
         method: 'GET',
@@ -81,3 +90,4 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 }))
+

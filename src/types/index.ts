@@ -19,6 +19,16 @@ export type AuthResponse = {
   refreshToken: string;
 };
 
+export type AuthSession = {
+  sessionId: string;
+  current: boolean;
+  userAgent: string | null;
+  ipAddress: string | null;
+  createdAt: string;
+  lastRotatedAt: string;
+  expiresAt: string;
+};
+
 // ─── Goals ───────────────────────────────────────────────────────────────────
 
 export type GoalStatus = 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'ABANDONED';

@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/auth-store";
-import { authApiFetch } from "@/utils/auth-api";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -11,27 +10,11 @@ const GoalsPage = () => {
   const user = useAuthStore((state) => state.user);
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const [logoutLoading, setLogoutLoading] = useState(false);
-  const [logoutError, setLogoutError] = useState<string | null>(null);
 
   const handleLogout = async () => {
     setLogoutLoading(true);
-    setLogoutError(null);
-
-    try {
-      const response = await authApiFetch("/logout", { method: "POST" });
-      if (!response.ok) {
-        throw new Error("Could not log out right now.");
-      }
-
-      clearAuth();
-      router.replace("/signin");
-    } catch (cause) {
-      setLogoutError(
-        cause instanceof Error ? cause.message : "Could not log out right now."
-      );
-    } finally {
-      setLogoutLoading(false);
-    }
+    await clearAuth();
+    router.replace("/signin");
   };
 
   return (
@@ -54,8 +37,6 @@ const GoalsPage = () => {
           {logoutLoading ? "Logging out..." : "Logout"}
         </Button>
       </div>
-
-      {logoutError ? <p className="text-sm text-destructive">{logoutError}</p> : null}
 
       <section className="rounded-md border p-5">
         <Button>Create goal</Button>
