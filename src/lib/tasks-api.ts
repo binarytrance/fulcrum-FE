@@ -1,23 +1,27 @@
 import { apiFetch, parseApiError, unwrapApiResponse } from './api'
 import type { Task, CreateTaskDto, UpdateTaskDto, TaskType, TaskStatus } from '../types'
 
-// ---------------------------------------------------------------------------
-// Internal helper — parse a successful JSON response
-// ---------------------------------------------------------------------------
+export type TasksPaginatedResponse = {
+  items: Task[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+}
 
-
+export type TaskStatsResponse = {
+  total: number
+  byStatus: { PENDING: number; IN_PROGRESS: number; COMPLETED: number; CANCELLED: number }
+  byType: { PLANNED: number; UNPLANNED: number }
+}
 
 // ---------------------------------------------------------------------------
 // Tasks API
 // ---------------------------------------------------------------------------
 
 /**
- * Retrieve all tasks, with optional filters.
- *
- * @param filters.date     ISO date string (YYYY-MM-DD) — return tasks scheduled for that day
- * @param filters.type     PLANNED | UNPLANNED
- * @param filters.status   PENDING | IN_PROGRESS | COMPLETED | CANCELLED
- * @param filters.goalId   Only tasks linked to this goal
+ * Retrieve tasks with optional filters. Returns flat array (extracts .items).
+ * Use getPaginatedTasks() when you need pagination metadata.
  */
 export async function getTasks(filters?: {
   date?: string
@@ -38,7 +42,43 @@ export async function getTasks(filters?: {
   const path = query ? `/tasks?${query}` : '/tasks'
 
   const response = await apiFetch(path)
-  return unwrapApiResponse<Task[]>(response)
+  const result = await unwrapApiResponse<TasksPaginatedResponse>(response)
+  return result.items
+}
+
+/**
+ * Retrieve tasks with full pagination metadata.
+ */
+export async function getPaginatedTasks(filters?: {
+  status?: TaskStatus
+  type?: TaskType
+  goalId?: string
+  page?: number
+  limit?: number
+}): Promise<TasksPaginatedResponse> {
+  const params = new URLSearchParams()
+
+  if (filters) {
+    if (filters.status) params.set('status', filters.status)
+    if (filters.type)   params.set('type',   filters.type)
+    if (filters.goalId) params.set('goalId', filters.goalId)
+    if (filters.page != null)  params.set('page',  String(filters.page))
+    if (filters.limit != null) params.set('limit', String(filters.limit))
+  }
+
+  const query = params.toString()
+  const path = query ? `/tasks?${query}` : '/tasks'
+
+  const response = await apiFetch(path)
+  return unwrapApiResponse<TasksPaginatedResponse>(response)
+}
+
+/**
+ * Retrieve task statistics (total + counts by status and type).
+ */
+export async function getTaskStats(): Promise<TaskStatsResponse> {
+  const response = await apiFetch('/tasks/stats')
+  return unwrapApiResponse<TaskStatsResponse>(response)
 }
 
 /**
@@ -85,6 +125,17 @@ export async function completeTask(id: string, actualDuration?: number): Promise
     body: JSON.stringify(body),
   })
   return unwrapApiResponse<Task>(response)
+}
+
+/**
+ * Search tasks by query string. Returns paginated results.
+ */
+export async function searchTasks(q: string, opts?: { page?: number; limit?: number }): Promise<TasksPaginatedResponse> {
+  const params = new URLSearchParams({ q })
+  if (opts?.page  != null) params.set('page',  String(opts.page))
+  if (opts?.limit != null) params.set('limit', String(opts.limit))
+  const response = await apiFetch(`/tasks/search?${params.toString()}`)
+  return unwrapApiResponse<TasksPaginatedResponse>(response)
 }
 
 /**

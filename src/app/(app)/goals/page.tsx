@@ -1,15 +1,15 @@
-"use client"
+"use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
-import Link from "next/link"
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import Link from "next/link";
 import {
   Trophy,
   Plus,
   ChevronDown,
-  ChevronRight,
+  Search,
   MoreHorizontal,
   Calendar,
   Clock,
@@ -21,25 +21,24 @@ import {
   Play,
   AlertTriangle,
   FolderTree,
-  Filter,
   X,
   Sparkles,
-} from "lucide-react"
+  Timer,
+} from "lucide-react";
 import type {
   Goal,
   GoalStatus,
   GoalCategory,
   GoalPriority,
   CreateGoalDto,
-} from "@/types"
-import { useGoalsStore } from "@/store/goals-store"
-import { toast } from "@/components/ui/toast"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+} from "@/types";
+import { useGoalsStore } from "@/store/goals-store";
+import { toast } from "@/components/ui/toast";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -47,7 +46,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,7 +54,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import {
   Form,
   FormField,
@@ -63,7 +62,7 @@ import {
   FormLabel,
   FormControl,
   FormMessage,
-} from "@/components/ui/form"
+} from "@/components/ui/form";
 import {
   Select,
   SelectContent,
@@ -71,11 +70,14 @@ import {
   SelectTrigger,
   SelectValue,
   SelectSeparator,
-} from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { cn } from "@/lib/utils"
-import { GoalProgressRing } from "@/components/goals/GoalProgressRing"
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+import { getTasks, updateTask, deleteTask, completeTask } from "@/lib/tasks-api";
+import { getSubgoals } from "@/lib/goals-api";
+import { GoalProgressRing } from "@/components/goals/GoalProgressRing";
+import type { Task } from "@/types";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -86,24 +88,32 @@ const GOAL_CATEGORIES: GoalCategory[] = [
   "PERSONAL",
   "FINANCIAL",
   "OTHER",
-]
-const GOAL_PRIORITIES: GoalPriority[] = ["HIGH", "MEDIUM", "LOW"]
-const STATUS_TABS = ["ALL", "ACTIVE", "PAUSED", "COMPLETED", "ABANDONED"] as const
-const MAX_DEPTH = 2
+];
+const GOAL_PRIORITIES: GoalPriority[] = ["HIGH", "MEDIUM", "LOW"];
+const MAX_DEPTH = 2;
+const PAGE_SIZE = 10;
+const SUBGOALS_PREVIEW_PAGE_SIZE = 5;
 
 // ─── Zod Schema ───────────────────────────────────────────────────────────────
 
 const goalFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
-  category: z.enum(["CAREER", "LEARNING", "HEALTH", "PERSONAL", "FINANCIAL", "OTHER"]),
+  category: z.enum([
+    "CAREER",
+    "LEARNING",
+    "HEALTH",
+    "PERSONAL",
+    "FINANCIAL",
+    "OTHER",
+  ]),
   priority: z.enum(["HIGH", "MEDIUM", "LOW"]),
   deadline: z.string().optional(),
   estimatedHours: z.number().min(0).optional(),
   parentGoalId: z.string().optional(),
-})
+});
 
-type GoalFormValues = z.infer<typeof goalFormSchema>
+type GoalFormValues = z.infer<typeof goalFormSchema>;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -113,81 +123,82 @@ const categoryConfig: Record<
 > = {
   CAREER: {
     label: "Career",
-    className: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20",
+    className:
+      "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20",
   },
   LEARNING: {
     label: "Learning",
-    className: "bg-violet-500/10 text-violet-700 dark:text-violet-300 border border-violet-500/20",
+    className:
+      "bg-violet-500/10 text-violet-700 dark:text-violet-300 border border-violet-500/20",
   },
   HEALTH: {
     label: "Health",
-    className: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20",
+    className:
+      "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20",
   },
   PERSONAL: {
     label: "Personal",
-    className: "bg-pink-500/10 text-pink-700 dark:text-pink-300 border border-pink-500/20",
+    className:
+      "bg-pink-500/10 text-pink-700 dark:text-pink-300 border border-pink-500/20",
   },
   FINANCIAL: {
     label: "Financial",
-    className: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20",
+    className:
+      "bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20",
   },
   OTHER: {
     label: "Other",
     className: "bg-muted text-muted-foreground border border-border/60",
   },
-}
+};
 
-const priorityConfig: Record<
-  GoalPriority,
-  { label: string; dot: string }
-> = {
+const priorityConfig: Record<GoalPriority, { label: string; dot: string }> = {
   HIGH: { label: "High", dot: "bg-red-500" },
   MEDIUM: { label: "Medium", dot: "bg-amber-500" },
   LOW: { label: "Low", dot: "bg-slate-400" },
-}
+};
 
 const statusConfig: Record<
   GoalStatus,
-  { label: string; variant: "success" | "warning" | "secondary" | "destructive" }
+  {
+    label: string;
+    variant: "success" | "warning" | "secondary" | "destructive";
+  }
 > = {
   ACTIVE: { label: "Active", variant: "success" },
   PAUSED: { label: "Paused", variant: "warning" },
   COMPLETED: { label: "Completed", variant: "secondary" },
   ABANDONED: { label: "Abandoned", variant: "destructive" },
-}
+  MISSED: { label: "Missed", variant: "destructive" },
+};
 
 function formatDeadline(deadline: string): { text: string; overdue: boolean } {
-  const date = new Date(deadline + "T00:00:00")
-  const now = new Date()
-  now.setHours(0, 0, 0, 0)
-  const days = Math.ceil((date.getTime() - now.getTime()) / 86400000)
+  const rawDate = deadline.includes("T") ? deadline.split("T")[0] : deadline;
+  const date = new Date(rawDate + "T00:00:00");
+  if (Number.isNaN(date.getTime())) return { text: "Invalid date", overdue: false };
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const days = Math.ceil((date.getTime() - now.getTime()) / 86400000);
   const formatted = date.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
-  })
-  if (days < 0) return { text: `${formatted} · overdue`, overdue: true }
-  if (days === 0) return { text: `${formatted} · today`, overdue: false }
-  if (days <= 7) return { text: `${formatted} · ${days}d left`, overdue: false }
-  return { text: formatted, overdue: false }
-}
-
-function buildGoalTree(goal: Goal, allGoals: Goal[]): Goal {
-  if (goal.children && goal.children.length > 0) {
-    return { ...goal, children: goal.children.map((c) => buildGoalTree(c, allGoals)) }
-  }
-  const flatChildren = allGoals.filter((g) => g.parentGoalId === goal.id)
-  return { ...goal, children: flatChildren.map((c) => buildGoalTree(c, allGoals)) }
+  });
+  if (days < 0) return { text: `${formatted} · overdue`, overdue: true };
+  if (days === 0) return { text: `${formatted} · today`, overdue: false };
+  if (days <= 7)
+    return { text: `${formatted} · ${days}d left`, overdue: false };
+  return { text: formatted, overdue: false };
 }
 
 // ─── Goal Form Modal ──────────────────────────────────────────────────────────
 
 interface GoalFormModalProps {
-  open: boolean
-  onClose: () => void
-  editingGoal?: Goal | null
-  defaultParentId?: string | null
-  allGoals: Goal[]
+  open: boolean;
+  onClose: () => void;
+  editingGoal?: Goal | null;
+  defaultParentId?: string | null;
+  allGoals: Goal[];
 }
 
 function GoalFormModal({
@@ -197,8 +208,8 @@ function GoalFormModal({
   defaultParentId,
   allGoals,
 }: GoalFormModalProps) {
-  const { createGoal, updateGoal } = useGoalsStore()
-  const [submitting, setSubmitting] = useState(false)
+  const { createGoal, updateGoal } = useGoalsStore();
+  const [submitting, setSubmitting] = useState(false);
 
   const form = useForm<GoalFormValues>({
     resolver: zodResolver(goalFormSchema),
@@ -211,29 +222,31 @@ function GoalFormModal({
       estimatedHours: undefined,
       parentGoalId: "",
     },
-  })
+  });
 
   useEffect(() => {
-    if (!open) return
-    const parentId = defaultParentId ?? editingGoal?.parentGoalId ?? ""
+    if (!open) return;
+    const parentId = defaultParentId ?? editingGoal?.parentGoalId ?? "";
     form.reset({
       title: editingGoal?.title ?? "",
       description: editingGoal?.description ?? "",
       category: editingGoal?.category ?? "CAREER",
       priority: editingGoal?.priority ?? "MEDIUM",
-      deadline: editingGoal?.deadline ? editingGoal.deadline.split("T")[0] : "",
+      deadline: (editingGoal?.estimatedEndDate ?? editingGoal?.deadline)
+        ? (editingGoal?.estimatedEndDate ?? editingGoal?.deadline)!.split("T")[0]
+        : "",
       estimatedHours: editingGoal?.estimatedHours ?? undefined,
       parentGoalId: parentId,
-    })
-  }, [open, editingGoal, defaultParentId]) // eslint-disable-line react-hooks/exhaustive-deps
+    });
+  }, [open, editingGoal, defaultParentId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const potentialParents = useMemo(
     () => allGoals.filter((g) => !g.parentGoalId && g.id !== editingGoal?.id),
-    [allGoals, editingGoal]
-  )
+    [allGoals, editingGoal],
+  );
 
   const onSubmit = async (data: GoalFormValues) => {
-    setSubmitting(true)
+    setSubmitting(true);
     try {
       const cleaned: Partial<CreateGoalDto> = {
         title: data.title,
@@ -241,11 +254,12 @@ function GoalFormModal({
         category: data.category,
         priority: data.priority,
         deadline: data.deadline || undefined,
+        estimatedEndDate: data.deadline || undefined,
         estimatedHours: data.estimatedHours ?? undefined,
-      }
+      };
       if (editingGoal) {
-        await updateGoal(editingGoal.id, cleaned)
-        toast.success("Goal updated")
+        await updateGoal(editingGoal.id, cleaned);
+        toast.success("Goal updated");
       } else {
         await createGoal({
           ...(cleaned as CreateGoalDto),
@@ -253,23 +267,23 @@ function GoalFormModal({
             data.parentGoalId && data.parentGoalId !== "none"
               ? data.parentGoalId
               : undefined,
-        })
-        toast.success("Goal created!")
+        });
+        toast.success("Goal created!");
       }
-      onClose()
+      onClose();
     } catch (err) {
       toast.error(
         editingGoal ? "Failed to update goal" : "Failed to create goal",
-        err instanceof Error ? err.message : "Please try again."
-      )
+        err instanceof Error ? err.message : "Please try again.",
+      );
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   const lockedParent = defaultParentId
     ? allGoals.find((g) => g.id === defaultParentId)
-    : null
+    : null;
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && !submitting && onClose()}>
@@ -282,8 +296,8 @@ function GoalFormModal({
             {editingGoal
               ? "Edit Goal"
               : lockedParent
-              ? `Sub-goal under "${lockedParent.title}"`
-              : "New Goal"}
+                ? `Sub-goal under "${lockedParent.title}"`
+                : "New Goal"}
           </DialogTitle>
           <DialogDescription>
             {editingGoal
@@ -293,7 +307,10 @@ function GoalFormModal({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-1">
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-4 pt-1"
+          >
             <FormField
               control={form.control}
               name="title"
@@ -303,7 +320,10 @@ function GoalFormModal({
                     Title <span className="text-destructive">*</span>
                   </FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. Get promoted this year" {...field} />
+                    <Input
+                      placeholder="e.g. Get promoted this year"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -415,7 +435,9 @@ function GoalFormModal({
                         value={field.value ?? ""}
                         onChange={(e) =>
                           field.onChange(
-                            e.target.value === "" ? undefined : parseFloat(e.target.value)
+                            e.target.value === ""
+                              ? undefined
+                              : parseFloat(e.target.value),
                           )
                         }
                       />
@@ -436,7 +458,9 @@ function GoalFormModal({
                     {lockedParent ? (
                       <div className="flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2 text-sm">
                         <FolderTree className="size-3.5 text-muted-foreground" />
-                        <span className="font-medium">{lockedParent.title}</span>
+                        <span className="font-medium">
+                          {lockedParent.title}
+                        </span>
                         <span className="text-muted-foreground">(locked)</span>
                       </div>
                     ) : (
@@ -491,20 +515,20 @@ function GoalFormModal({
         </Form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
 // ─── Confirm Dialog ───────────────────────────────────────────────────────────
 
 interface ConfirmDialogProps {
-  open: boolean
-  title: string
-  description: string
-  confirmLabel?: string
-  destructive?: boolean
-  loading?: boolean
-  onConfirm: () => void
-  onClose: () => void
+  open: boolean;
+  title: string;
+  description: string;
+  confirmLabel?: string;
+  destructive?: boolean;
+  loading?: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
 }
 
 function ConfirmDialog({
@@ -525,7 +549,7 @@ function ConfirmDialog({
             <AlertTriangle
               className={cn(
                 "size-5",
-                destructive ? "text-destructive" : "text-amber-500"
+                destructive ? "text-destructive" : "text-amber-500",
               )}
             />
             {title}
@@ -553,80 +577,164 @@ function ConfirmDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
 // ─── Goal Card ────────────────────────────────────────────────────────────────
 
 interface GoalCardProps {
-  goal: Goal
-  depth: number
-  allGoals: Goal[]
-  onEdit: (goal: Goal) => void
-  onAddChild: (parent: Goal) => void
+  goal: Goal;
+  depth: number;
+  onEdit: (goal: Goal) => void;
+  onAddChild: (parent: Goal) => void;
 }
 
-function GoalCard({ goal, depth, allGoals, onEdit, onAddChild }: GoalCardProps) {
-  const { updateGoal, deleteGoal } = useGoalsStore()
-  const [collapsed, setCollapsed] = useState(false)
-  const [actionLoading, setActionLoading] = useState(false)
+function GoalCard({
+  goal,
+  depth,
+  onEdit,
+  onAddChild,
+}: GoalCardProps) {
+  const { updateGoal, deleteGoal } = useGoalsStore();
+  const [expanded, setExpanded] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasksLoading, setTasksLoading] = useState(false);
+  const [tasksFetched, setTasksFetched] = useState(false);
+  const [taskActionLoading, setTaskActionLoading] = useState<string | null>(null);
+  const [subgoals, setSubgoals] = useState<Goal[]>([]);
+  const [subgoalsLoading, setSubgoalsLoading] = useState(false);
+  const [subgoalsFetched, setSubgoalsFetched] = useState(false);
+  const [subgoalsTotal, setSubgoalsTotal] = useState(0);
   const [confirm, setConfirm] = useState<{
-    type: "delete" | "abandon" | "complete"
-    label: string
-    description: string
-  } | null>(null)
+    type: "delete" | "abandon" | "complete";
+    label: string;
+    description: string;
+  } | null>(null);
 
-  const hasChildren = Boolean(goal.children?.length)
-  const childCount = goal.children?.length ?? 0
-  const canAddChild = depth < MAX_DEPTH
-  const isTerminal = goal.status === "COMPLETED" || goal.status === "ABANDONED"
-  const deadline = goal.deadline ? formatDeadline(goal.deadline) : null
-  const cat = categoryConfig[goal.category]
-  const pri = priorityConfig[goal.priority]
-  const sts = statusConfig[goal.status]
-  const score = goal.progress?.score ?? 0
+  const visibleChildren = subgoals.slice(0, SUBGOALS_PREVIEW_PAGE_SIZE);
+  const hasMoreSubgoals = subgoalsTotal > SUBGOALS_PREVIEW_PAGE_SIZE;
+  const canAddChild = depth < MAX_DEPTH;
+  const isTerminal = goal.status === "COMPLETED" || goal.status === "ABANDONED" || goal.status === "MISSED";
+  const deadlineDate = goal.estimatedEndDate ?? goal.deadline;
+  const deadline = deadlineDate ? formatDeadline(deadlineDate) : null;
+  const cat = categoryConfig[goal.category] ?? categoryConfig["OTHER"];
+  const pri = priorityConfig[goal.priority] ?? priorityConfig["MEDIUM"];
+  const sts = statusConfig[goal.status] ?? statusConfig["ACTIVE"];
+  const score = goal.progress?.score ?? 0;
+  const isOverdue = Boolean(goal.isOverdue || deadline?.overdue);
 
-  const handleStatusChange = async (status: GoalStatus) => {
-    setActionLoading(true)
+  // Lazy-fetch subgoals on first expand
+  useEffect(() => {
+    if (!expanded || subgoalsFetched) return;
+    setSubgoalsLoading(true);
+    getSubgoals(goal.id, { limit: SUBGOALS_PREVIEW_PAGE_SIZE })
+      .then((res) => {
+        setSubgoals(res.items);
+        setSubgoalsTotal(res.total);
+        setSubgoalsFetched(true);
+      })
+      .catch(() => setSubgoalsFetched(true))
+      .finally(() => setSubgoalsLoading(false));
+  }, [expanded, subgoalsFetched, goal.id]);
+
+  // Lazy-fetch tasks on first expand
+  useEffect(() => {
+    if (!expanded || tasksFetched) return;
+    setTasksLoading(true);
+    getTasks({ goalId: goal.id })
+      .then((data) => {
+        setTasks(data);
+        setTasksFetched(true);
+      })
+      .catch(() => setTasksFetched(true))
+      .finally(() => setTasksLoading(false));
+  }, [expanded, tasksFetched, goal.id]);
+
+  const handleTaskAction = async (taskId: string, action: "start" | "pause" | "complete" | "delete") => {
+    setTaskActionLoading(taskId);
     try {
-      await updateGoal(goal.id, { status })
-      toast.success(
-        status === "ACTIVE" ? "Goal resumed" :
-        status === "PAUSED" ? "Goal paused" :
-        status === "COMPLETED" ? "🎉 Goal completed!" :
-        "Goal abandoned"
-      )
-    } catch (err) {
-      toast.error("Failed to update status", err instanceof Error ? err.message : undefined)
+      if (action === "start") {
+        const updated = await updateTask(taskId, { status: "IN_PROGRESS" });
+        setTasks(prev => prev.map(t => t.id === taskId ? updated : t));
+        toast.success("Task started!");
+      } else if (action === "pause") {
+        const updated = await updateTask(taskId, { status: "PENDING" });
+        setTasks(prev => prev.map(t => t.id === taskId ? updated : t));
+        toast.success("Task paused");
+      } else if (action === "complete") {
+        const updated = await completeTask(taskId);
+        setTasks(prev => prev.map(t => t.id === taskId ? updated : t));
+        toast.success("Task completed!");
+      } else {
+        await deleteTask(taskId);
+        setTasks(prev => prev.filter(t => t.id !== taskId));
+        toast.success("Task deleted");
+      }
+    } catch {
+      toast.error("Action failed");
     } finally {
-      setActionLoading(false)
-      setConfirm(null)
+      setTaskActionLoading(null);
     }
-  }
+  };
+  
+  const handleStatusChange = async (status: GoalStatus) => {
+    setActionLoading(true);
+    try {
+      await updateGoal(goal.id, { status });
+      toast.success(
+        status === "ACTIVE"
+          ? "Goal resumed"
+          : status === "PAUSED"
+            ? "Goal paused"
+            : status === "COMPLETED"
+              ? "🎉 Goal completed!"
+              : status === "MISSED"
+                ? "Goal marked as missed"
+                : "Goal abandoned",
+      );
+    } catch (err) {
+      toast.error(
+        "Failed to update status",
+        err instanceof Error ? err.message : undefined,
+      );
+    } finally {
+      setActionLoading(false);
+      setConfirm(null);
+    }
+  };
 
   const handleDelete = async () => {
-    setActionLoading(true)
+    setActionLoading(true);
     try {
-      await deleteGoal(goal.id)
-      toast.success("Goal deleted")
-      setConfirm(null)
+      await deleteGoal(goal.id);
+      toast.success("Goal deleted");
+      setConfirm(null);
     } catch (err) {
-      toast.error("Failed to delete goal", err instanceof Error ? err.message : undefined)
+      toast.error(
+        "Failed to delete goal",
+        err instanceof Error ? err.message : undefined,
+      );
     } finally {
-      setActionLoading(false)
+      setActionLoading(false);
     }
-  }
+  };
 
   const handleConfirm = async () => {
-    if (!confirm) return
-    if (confirm.type === "delete") await handleDelete()
-    else if (confirm.type === "abandon") await handleStatusChange("ABANDONED")
-    else if (confirm.type === "complete") await handleStatusChange("COMPLETED")
-  }
+    if (!confirm) return;
+    if (confirm.type === "delete") await handleDelete();
+    else if (confirm.type === "abandon") await handleStatusChange("ABANDONED");
+    else if (confirm.type === "complete") await handleStatusChange("COMPLETED");
+  };
+
+  const activeTasks = tasks.filter(
+    (t) => t.status !== "COMPLETED" && t.status !== "CANCELLED",
+  );
+  const completedTasks = tasks.filter((t) => t.status === "COMPLETED");
 
   return (
     <div className={cn("relative", depth > 0 && "ml-6")}>
-      {/* Vertical connector */}
+      {/* Sub-goal connectors */}
       {depth > 0 && (
         <div className="absolute -left-6 top-0 bottom-0 w-px bg-gradient-to-b from-violet-500/30 to-transparent" />
       )}
@@ -662,187 +770,195 @@ function GoalCard({ goal, depth, allGoals, onEdit, onAddChild }: GoalCardProps) 
 
       <Card
         className={cn(
-          "rounded-2xl border border-border/70 bg-card/80 backdrop-blur-sm transition-all duration-200 hover:shadow-md hover:border-border",
-          isTerminal && "opacity-55 saturate-50"
+          "overflow-hidden border border-border/70 bg-card/85 backdrop-blur-sm transition-all duration-200",
+          "border-l-[3px]",
+          !expanded && "hover:shadow-md hover:border-border",
+          expanded && "shadow-md border-border",
+          goal.status === "ACTIVE" && "border-l-violet-500",
+          goal.status === "PAUSED" && "border-l-amber-400",
+          goal.status === "COMPLETED" && "border-l-emerald-500",
+          goal.status === "ABANDONED" && "border-l-rose-400",
+          isTerminal && "opacity-55 saturate-50",
         )}
       >
-        <CardContent className="p-4">
-          <div className="flex items-start gap-3">
+        {/* ── Summary row (always visible) ── */}
+        <CardContent className="px-4 py-3">
+          <div
+            className="flex items-center gap-3 cursor-pointer"
+            onClick={() => setExpanded((v) => !v)}
+          >
             {/* Progress ring */}
             {goal.progress !== undefined && (
-              <GoalProgressRing
-                percent={score}
-                size={54}
-                strokeWidth={5}
-                className="mt-0.5 shrink-0"
-              />
+              <div className="shrink-0">
+                <GoalProgressRing percent={score} size={40} strokeWidth={4.5} />
+              </div>
             )}
 
+            {/* Title + desc */}
             <div className="flex-1 min-w-0">
-              {/* Title row */}
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    {hasChildren && (
-                      <button
-                        onClick={() => setCollapsed((c) => !c)}
-                        className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                      >
-                        {collapsed ? (
-                          <ChevronRight className="size-3.5" />
-                        ) : (
-                          <ChevronDown className="size-3.5" />
-                        )}
-                      </button>
-                    )}
-                    <Link
-                      href={`/goals/${goal.id}`}
-                      className="font-semibold text-sm leading-snug hover:text-violet-600 dark:hover:text-violet-400 hover:underline underline-offset-2 transition-colors truncate"
-                    >
-                      {goal.title}
-                    </Link>
-                  </div>
+              <p className="font-semibold text-sm leading-snug truncate group-hover:text-violet-600 dark:group-hover:text-violet-400">
+                {goal.title}
+              </p>
+              {goal.description && !expanded && (
+                <p className="mt-0.5 text-[11px] text-muted-foreground truncate leading-snug">
+                  {goal.description}
+                </p>
+              )}
+            </div>
 
-                  {/* Badges */}
-                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                    <Badge variant={sts.variant} className="text-[10px] px-1.5 py-0">
-                      {sts.label}
-                    </Badge>
+            {/* Accordion chevron */}
+            <ChevronDown
+              className={cn(
+                "size-4 shrink-0 text-muted-foreground transition-transform duration-200",
+                expanded && "rotate-180",
+              )}
+            />
 
-                    {/* Priority dot + label */}
-                    <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
-                      <span className={cn("size-1.5 rounded-full", pri.dot)} />
-                      {pri.label}
-                    </span>
-
-                    {/* Category */}
-                    <span
-                      className={cn(
-                        "inline-flex items-center rounded-full px-1.5 py-0 text-[10px] font-medium",
-                        cat.className
-                      )}
-                    >
-                      {cat.label}
-                    </span>
-
-                    {hasChildren && (
-                      <span className="text-[10px] text-muted-foreground">
-                        {childCount} sub-goal{childCount !== 1 ? "s" : ""}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-7 shrink-0 opacity-50 hover:opacity-100 transition-opacity"
-                      disabled={actionLoading}
-                    >
-                      <MoreHorizontal className="size-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuLabel className="text-xs">Actions</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => onEdit(goal)}>
-                      <Edit2 className="size-3.5" />
-                      Edit Goal
+            {/* Right chips + actions — stop propagation so clicks don't toggle accordion */}
+            <div
+              className="flex items-center gap-1.5 shrink-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Badge variant={sts.variant} className="text-[10px] px-1.5 py-0">
+                {sts.label}
+              </Badge>
+              <span className="hidden sm:inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                <span className={cn("size-1.5 rounded-full", pri.dot)} />
+                {pri.label}
+              </span>
+              <span
+                className={cn(
+                  "hidden md:inline-flex items-center rounded-full px-1.5 py-0 text-[10px] font-medium",
+                  cat.className,
+                )}
+              >
+                {cat.label}
+              </span>
+              {deadline && (
+                <span
+                  className={cn(
+                    "hidden lg:flex items-center gap-1 text-[10px]",
+                    isOverdue
+                      ? "text-destructive font-medium"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  <Calendar className="size-3" />
+                  {deadline.text}
+                </span>
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-7 opacity-40 hover:opacity-100 transition-opacity"
+                    disabled={actionLoading}
+                  >
+                    <MoreHorizontal className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuLabel className="text-xs">
+                    Actions
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => onEdit(goal)}>
+                    <Edit2 className="size-3.5" /> Edit Goal
+                  </DropdownMenuItem>
+                  {canAddChild && !isTerminal && (
+                    <DropdownMenuItem onClick={() => onAddChild(goal)}>
+                      <FolderTree className="size-3.5" /> Add Sub-goal
                     </DropdownMenuItem>
-                    {canAddChild && !isTerminal && (
-                      <DropdownMenuItem onClick={() => onAddChild(goal)}>
-                        <FolderTree className="size-3.5" />
-                        Add Sub-goal
-                      </DropdownMenuItem>
-                    )}
-                    {!isTerminal && (
-                      <>
-                        <DropdownMenuSeparator />
-                        {goal.status === "ACTIVE" && (
-                          <DropdownMenuItem onClick={() => handleStatusChange("PAUSED")}>
-                            <Pause className="size-3.5" />
-                            Pause
-                          </DropdownMenuItem>
-                        )}
-                        {goal.status === "PAUSED" && (
-                          <DropdownMenuItem onClick={() => handleStatusChange("ACTIVE")}>
-                            <Play className="size-3.5" />
-                            Resume
-                          </DropdownMenuItem>
-                        )}
-                        {goal.isReadyToComplete && (
-                          <DropdownMenuItem
-                            onClick={() =>
-                              setConfirm({
-                                type: "complete",
-                                label: "Mark Complete",
-                                description: `Mark "${goal.title}" as completed?`,
-                              })
-                            }
-                          >
-                            <CheckCircle2 className="size-3.5" />
-                            Complete
-                          </DropdownMenuItem>
-                        )}
+                  )}
+                  {!isTerminal && (
+                    <>
+                      <DropdownMenuSeparator />
+                      {goal.status === "ACTIVE" && (
                         <DropdownMenuItem
-                          destructive
+                          onClick={() => handleStatusChange("PAUSED")}
+                        >
+                          <Pause className="size-3.5" /> Pause
+                        </DropdownMenuItem>
+                      )}
+                      {goal.status === "PAUSED" && (
+                        <DropdownMenuItem
+                          onClick={() => handleStatusChange("ACTIVE")}
+                        >
+                          <Play className="size-3.5" /> Resume
+                        </DropdownMenuItem>
+                      )}
+                      {goal.isReadyToComplete && (
+                        <DropdownMenuItem
                           onClick={() =>
                             setConfirm({
-                              type: "abandon",
-                              label: "Abandon",
-                              description: `Abandon "${goal.title}"? This marks it as abandoned.`,
+                              type: "complete",
+                              label: "Mark Complete",
+                              description: `Mark "${goal.title}" as completed?`,
                             })
                           }
                         >
-                          <X className="size-3.5" />
-                          Abandon
+                          <CheckCircle2 className="size-3.5" /> Complete
                         </DropdownMenuItem>
-                      </>
-                    )}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      destructive
-                      onClick={() =>
-                        setConfirm({
-                          type: "delete",
-                          label: "Delete",
-                          description: `Permanently delete "${goal.title}"? This cannot be undone.`,
-                        })
-                      }
-                    >
-                      <Trash2 className="size-3.5" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+                      )}
+                      <DropdownMenuItem
+                        destructive
+                        onClick={() =>
+                          setConfirm({
+                            type: "abandon",
+                            label: "Abandon",
+                            description: `Abandon "${goal.title}"?`,
+                          })
+                        }
+                      >
+                        <X className="size-3.5" /> Abandon
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    destructive
+                    onClick={() =>
+                      setConfirm({
+                        type: "delete",
+                        label: "Delete",
+                        description: `Permanently delete "${goal.title}"?`,
+                      })
+                    }
+                  >
+                    <Trash2 className="size-3.5" /> Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </CardContent>
 
-              {/* Progress bar */}
-              {goal.progress !== undefined && (
-                <div className="mt-2">
-                  <Progress
-                    value={score}
-                    className={cn(
-                      "h-1.5",
-                      score >= 100 && "[&>div]:bg-emerald-500",
-                      score >= 50 && score < 100 && "[&>div]:bg-violet-500",
-                      score < 50 && "[&>div]:bg-indigo-400"
-                    )}
-                  />
-                </div>
+        {/* ── Accordion panel ── */}
+        <div
+          className={cn(
+            "grid transition-all duration-300 ease-in-out",
+            expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+          )}
+        >
+          <div className="overflow-hidden">
+            <Separator className="opacity-50" />
+            <div className="px-5 py-4 space-y-4">
+              {/* Full description */}
+              {goal.description && (
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {goal.description}
+                </p>
               )}
 
               {/* Meta */}
               {(deadline || goal.estimatedHours) && (
-                <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
+                <div className="flex items-center gap-4 text-xs text-muted-foreground">
                   {deadline && (
                     <span
                       className={cn(
                         "flex items-center gap-1",
-                        deadline.overdue && "text-destructive font-medium"
+                        isOverdue && "text-destructive font-semibold",
                       )}
                     >
                       <Calendar className="size-3" />
@@ -857,33 +973,317 @@ function GoalCard({ goal, depth, allGoals, onEdit, onAddChild }: GoalCardProps) 
                   )}
                 </div>
               )}
+
+              {/* Sub-goals (inline preview) */}
+              <div className="space-y-1.5">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                  <FolderTree className="size-3" /> Sub-goals
+                  {!subgoalsLoading && subgoalsFetched && subgoalsTotal > 0 && (
+                    <span className="font-normal normal-case tracking-normal">({subgoalsTotal})</span>
+                  )}
+                </p>
+                {subgoalsLoading ? (
+                  <div className="space-y-1">
+                    {[1, 2].map((i) => (
+                      <Skeleton key={i} className="h-8 w-full rounded-lg" />
+                    ))}
+                  </div>
+                ) : subgoalsFetched && subgoals.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-1">No sub-goals yet.</p>
+                ) : (
+                  <div className="space-y-1">
+                    {visibleChildren.map((child) => {
+                      const childSts = statusConfig[child.status];
+                      const childScore = child.progress?.score ?? 0;
+                      const childDeadlineDate = child.estimatedEndDate ?? child.deadline;
+                      const childDeadline = childDeadlineDate
+                        ? formatDeadline(childDeadlineDate)
+                        : null;
+                      return (
+                        <Link
+                          key={child.id}
+                          href={`/goals/${child.id}`}
+                          className="flex items-center gap-2.5 rounded-lg border border-border/50 bg-muted/30 px-3 py-2 hover:bg-muted/50 transition-colors"
+                        >
+                          <GoalProgressRing
+                            percent={childScore}
+                            size={28}
+                            strokeWidth={3.5}
+                            className="shrink-0"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium truncate">
+                              {child.title}
+                            </p>
+                            {childDeadline && (
+                              <p
+                                className={cn(
+                                  "text-[10px]",
+                                  (child.isOverdue || childDeadline.overdue)
+                                    ? "text-destructive"
+                                    : "text-muted-foreground",
+                                )}
+                              >
+                                {childDeadline.text}
+                              </p>
+                            )}
+                          </div>
+                          <Badge
+                            variant={childSts.variant}
+                            className="text-[10px] px-1.5 py-0 shrink-0"
+                          >
+                            {childSts.label}
+                          </Badge>
+                        </Link>
+                      );
+                    })}
+                    {hasMoreSubgoals && (
+                      <Link
+                        href={`/goals/${goal.id}`}
+                        className="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-border/60 px-3 py-1.5 text-[11px] text-muted-foreground hover:text-foreground hover:border-border transition-colors"
+                      >
+                        +{subgoalsTotal - SUBGOALS_PREVIEW_PAGE_SIZE} more sub-goals
+                      </Link>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Tasks */}
+              <div className="space-y-1.5">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                  <CheckCircle2 className="size-3" /> Tasks
+                  {!tasksLoading && tasksFetched && tasks.length > 0 && (
+                    <span className="font-normal normal-case tracking-normal">
+                      ({completedTasks.length}/{tasks.length} done)
+                    </span>
+                  )}
+                </p>
+                {tasksLoading ? (
+                  <div className="space-y-1.5">
+                    {[1, 2].map((i) => (
+                      <Skeleton key={i} className="h-8 w-full rounded-lg" />
+                    ))}
+                  </div>
+                ) : tasks.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-1">
+                    No tasks linked to this goal yet.
+                  </p>
+                ) : (
+                  <div className="space-y-1">
+                    {activeTasks.slice(0, 4).map((task) => {
+                      const isActive = task.status === "IN_PROGRESS";
+                      const isLoading = taskActionLoading === task.id;
+                      return (
+                        <div
+                          key={task.id}
+                          className={cn(
+                            "group flex items-center gap-2 rounded-lg border px-3 py-2 transition-all",
+                            isActive
+                              ? "border-violet-500/30 bg-violet-500/[0.04]"
+                              : "border-border/40 bg-card hover:border-border/70",
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              "size-2 rounded-full shrink-0",
+                              isActive ? "bg-amber-400" : "bg-muted-foreground/30",
+                            )}
+                          />
+                          <span className="text-xs flex-1 truncate">{task.title}</span>
+                          {task.estimatedDuration && (
+                            <span className="text-[10px] text-muted-foreground shrink-0 flex items-center gap-0.5">
+                              <Clock className="size-2.5" />
+                              {Math.round(task.estimatedDuration / 60000)}m
+                            </span>
+                          )}
+                          {/* Actions — visible on hover */}
+                          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            <Button
+                              variant="ghost" size="icon"
+                              className="size-6 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                              disabled={isLoading}
+                              onClick={() => handleTaskAction(task.id, "complete")}
+                              title="Complete task"
+                            >
+                              <CheckCircle2 className="size-3" />
+                            </Button>
+                            {isActive ? (
+                              <Button
+                                variant="ghost" size="icon"
+                                className="size-6"
+                                disabled={isLoading}
+                                onClick={() => handleTaskAction(task.id, "pause")}
+                              >
+                                <Pause className="size-3" />
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="ghost" size="icon"
+                                className="size-6 text-violet-600 hover:text-violet-700 hover:bg-violet-50 dark:hover:bg-violet-950/30"
+                                disabled={isLoading}
+                                onClick={() => handleTaskAction(task.id, "start")}
+                              >
+                                <Play className="size-3" />
+                              </Button>
+                            )}
+                            {isActive && (
+                              <Button variant="ghost" size="icon" className="size-6" asChild>
+                                <Link href={`/timer/${task.id}`}>
+                                  <Timer className="size-3 text-violet-500" />
+                                </Link>
+                              </Button>
+                            )}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost" size="icon"
+                                  className="size-6 opacity-60 hover:opacity-100"
+                                  disabled={isLoading}
+                                >
+                                  <MoreHorizontal className="size-3" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-36">
+                                <DropdownMenuLabel className="text-xs">Task</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem asChild>
+                                  <Link href={`/timer/${task.id}`}>
+                                    <Timer className="size-3.5" /> Open Timer
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem destructive onClick={() => handleTaskAction(task.id, "delete")}>
+                                  <Trash2 className="size-3.5" /> Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {activeTasks.length > 4 && (
+                      <Link
+                        href={`/goals/${goal.id}`}
+                        className="flex items-center justify-center gap-1 rounded-lg border border-dashed border-border/60 px-3 py-1.5 text-[11px] text-muted-foreground hover:text-foreground hover:border-border transition-colors"
+                      >
+                        +{activeTasks.length - 4} more tasks — view full page
+                      </Link>
+                    )}
+                    {completedTasks.slice(0, 3).map((task) => (
+                      <div
+                        key={task.id}
+                        className="flex items-center gap-2 rounded-lg px-3 py-1.5 bg-muted/30"
+                      >
+                        <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
+                        <span className="text-xs line-through text-muted-foreground flex-1 truncate">
+                          {task.title}
+                        </span>
+                        {task.efficiencyScore !== undefined && (
+                          <span
+                            className={cn(
+                              "text-[10px] font-medium shrink-0",
+                              task.efficiencyScore >= 100
+                                ? "text-emerald-600"
+                                : task.efficiencyScore >= 75
+                                  ? "text-amber-600"
+                                  : "text-rose-500",
+                            )}
+                          >
+                            {task.efficiencyScore}%
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                    {completedTasks.length > 3 && (
+                      <Link
+                        href={`/goals/${goal.id}`}
+                        className="flex items-center justify-center gap-1 rounded-lg border border-dashed border-border/60 px-3 py-1.5 text-[11px] text-muted-foreground hover:text-foreground hover:border-border transition-colors"
+                      >
+                        +{completedTasks.length - 3} more completed - view full page
+                      </Link>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Action row */}
+              <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/40">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {!isTerminal && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1.5"
+                      onClick={() => onEdit(goal)}
+                    >
+                      <Edit2 className="size-3" /> Edit
+                    </Button>
+                  )}
+                  {canAddChild && !isTerminal && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1.5"
+                      onClick={() => onAddChild(goal)}
+                    >
+                      <Plus className="size-3" /> Sub-goal
+                    </Button>
+                  )}
+                  {goal.status === "ACTIVE" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1.5"
+                      onClick={() => handleStatusChange("PAUSED")}
+                      disabled={actionLoading}
+                    >
+                      <Pause className="size-3" /> Pause
+                    </Button>
+                  )}
+                  {goal.status === "PAUSED" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1.5 border-violet-500/40 text-violet-600 dark:text-violet-400"
+                      onClick={() => handleStatusChange("ACTIVE")}
+                      disabled={actionLoading}
+                    >
+                      <Play className="size-3" /> Resume
+                    </Button>
+                  )}
+                  {goal.isReadyToComplete && !isTerminal && (
+                    <Button
+                      size="sm"
+                      className="h-7 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                      onClick={() =>
+                        setConfirm({
+                          type: "complete",
+                          label: "Mark Complete",
+                          description: `Mark "${goal.title}" as completed?`,
+                        })
+                      }
+                      disabled={actionLoading}
+                    >
+                      <CheckCircle2 className="size-3" /> Complete
+                    </Button>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Children */}
-      {hasChildren && !collapsed && (
-        <div className="mt-2 space-y-2 relative">
-          {goal.children!.map((child) => (
-            <GoalCard
-              key={child.id}
-              goal={child}
-              depth={depth + 1}
-              allGoals={allGoals}
-              onEdit={onEdit}
-              onAddChild={onAddChild}
-            />
-          ))}
         </div>
-      )}
+      </Card>
 
       {confirm && (
         <ConfirmDialog
           open
           title={
-            confirm.type === "delete" ? "Delete Goal" :
-            confirm.type === "abandon" ? "Abandon Goal" : "Complete Goal"
+            confirm.type === "delete"
+              ? "Delete Goal"
+              : confirm.type === "abandon"
+                ? "Abandon Goal"
+                : "Complete Goal"
           }
           description={confirm.description}
           confirmLabel={confirm.label}
@@ -894,7 +1294,7 @@ function GoalCard({ goal, depth, allGoals, onEdit, onAddChild }: GoalCardProps) 
         />
       )}
     </div>
-  )
+  );
 }
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
@@ -903,7 +1303,10 @@ function GoalsSkeleton() {
   return (
     <div className="space-y-3">
       {[1, 2, 3].map((i) => (
-        <div key={i} className="rounded-2xl border border-border/70 p-4 space-y-3">
+        <div
+          key={i}
+          className="rounded-2xl border border-border/70 p-4 space-y-3"
+        >
           <div className="flex items-start gap-3">
             <Skeleton className="size-[54px] rounded-full shrink-0" />
             <div className="flex-1 space-y-2">
@@ -919,177 +1322,307 @@ function GoalsSkeleton() {
         </div>
       ))}
     </div>
-  )
+  );
 }
 
 // ─── Goals Page ───────────────────────────────────────────────────────────────
 
 export default function GoalsPage() {
-  const { goals, loading, error, fetchGoals } = useGoalsStore()
-  const [statusFilter, setStatusFilter] = useState<string>("ALL")
-  const [categoryFilter, setCategoryFilter] = useState<string>("ALL")
-  const [formOpen, setFormOpen] = useState(false)
-  const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
-  const [defaultParentId, setDefaultParentId] = useState<string | null>(null)
+  const {
+    goals, loading, error, pagination,
+    counts, countsLoading,
+    searchResults, searchPagination, searchLoading, searchError,
+    fetchGoals, loadMoreGoals, fetchGoalCounts,
+    searchGoals, loadMoreSearch, clearSearch,
+  } = useGoalsStore();
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
+  const isSearchMode = searchInput.trim().length > 0;
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
+  const [defaultParentId, setDefaultParentId] = useState<string | null>(null);
 
+  // Fetch counts once on mount (for stat tiles + filter tab badges)
   useEffect(() => {
-    fetchGoals()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    fetchGoalCounts();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const topLevelGoals = useMemo(() => {
-    const top = goals.filter((g) => !g.parentGoalId)
-    return top.map((g) => buildGoalTree(g, goals))
-  }, [goals])
+  // Server-side fetch whenever filters change — reset to page 1
+  useEffect(() => {
+    if (isSearchMode) return; // search mode handles its own fetches
+    fetchGoals({
+      ...(statusFilter !== "ALL" ? { status: statusFilter as GoalStatus } : {}),
+      ...(categoryFilter !== "ALL" ? { category: categoryFilter as GoalCategory } : {}),
+      page: 1,
+      limit: PAGE_SIZE,
+    });
+  }, [statusFilter, categoryFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const filteredGoals = useMemo(() => {
-    return topLevelGoals.filter((g) => {
-      if (statusFilter !== "ALL" && g.status !== statusFilter) return false
-      if (categoryFilter !== "ALL" && g.category !== categoryFilter) return false
-      return true
-    })
-  }, [topLevelGoals, statusFilter, categoryFilter])
-
-  const counts = useMemo(() => {
-    const base = goals.filter((g) => !g.parentGoalId)
-    return {
-      ALL: base.length,
-      ACTIVE: base.filter((g) => g.status === "ACTIVE").length,
-      PAUSED: base.filter((g) => g.status === "PAUSED").length,
-      COMPLETED: base.filter((g) => g.status === "COMPLETED").length,
-      ABANDONED: base.filter((g) => g.status === "ABANDONED").length,
+  // Debounced search
+  const handleSearchChange = (value: string) => {
+    setSearchInput(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!value.trim()) {
+      clearSearch();
+      return;
     }
-  }, [goals])
+    debounceRef.current = setTimeout(() => {
+      searchGoals(value.trim(), { page: 1, limit: PAGE_SIZE });
+    }, 350);
+  };
+
+  const handleClearSearch = () => {
+    setSearchInput("");
+    clearSearch();
+  };
+
+  const handleLoadMore = async () => {
+    if (isSearchMode) {
+      if (!searchPagination || searchPagination.page >= searchPagination.totalPages) return;
+      setLoadingMore(true);
+      await loadMoreSearch(searchInput.trim(), { page: searchPagination.page + 1, limit: PAGE_SIZE });
+      setLoadingMore(false);
+    } else {
+      if (!pagination || pagination.page >= pagination.totalPages) return;
+      setLoadingMore(true);
+      await loadMoreGoals({
+        ...(statusFilter !== "ALL" ? { status: statusFilter as GoalStatus } : {}),
+        ...(categoryFilter !== "ALL" ? { category: categoryFilter as GoalCategory } : {}),
+        page: pagination.page + 1,
+        limit: PAGE_SIZE,
+      });
+      setLoadingMore(false);
+    }
+  };
+
+  const sourceGoals = isSearchMode ? searchResults : goals;
+  const pagedGoals = sourceGoals;
+  const activePagination = isSearchMode ? searchPagination : pagination;
+  const hasMore = activePagination ? activePagination.page < activePagination.totalPages : false;
+  const totalGoals = activePagination?.total ?? pagedGoals.length;
+  const loadedCount = pagedGoals.length;
+
+  // Use store counts (from fetchGoalCounts) for stat tiles and filter badges
+  const displayCounts = counts ?? { ALL: 0, ACTIVE: 0, PAUSED: 0, COMPLETED: 0, ABANDONED: 0, MISSED: 0 };
 
   const openCreate = useCallback(() => {
-    setEditingGoal(null)
-    setDefaultParentId(null)
-    setFormOpen(true)
-  }, [])
+    setEditingGoal(null);
+    setDefaultParentId(null);
+    setFormOpen(true);
+  }, []);
 
   const openEdit = useCallback((goal: Goal) => {
-    setEditingGoal(goal)
-    setDefaultParentId(null)
-    setFormOpen(true)
-  }, [])
+    setEditingGoal(goal);
+    setDefaultParentId(null);
+    setFormOpen(true);
+  }, []);
 
   const openAddChild = useCallback((parent: Goal) => {
-    setEditingGoal(null)
-    setDefaultParentId(parent.id)
-    setFormOpen(true)
-  }, [])
+    setEditingGoal(null);
+    setDefaultParentId(parent.id);
+    setFormOpen(true);
+  }, []);
 
   const closeForm = useCallback(() => {
-    setFormOpen(false)
-    setEditingGoal(null)
-    setDefaultParentId(null)
-  }, [])
+    setFormOpen(false);
+    setEditingGoal(null);
+    setDefaultParentId(null);
+  }, []);
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden">
-      {/* Ambient blobs */}
+    <div className="relative min-h-screen overflow-x-clip bg-background">
+      {/* Background blobs — same pattern as dashboard */}
       <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
-      >
-        <div
-          className="absolute -top-32 left-1/4 h-[500px] w-[500px] rounded-full opacity-[0.06] blur-3xl dark:opacity-[0.10]"
-          style={{ background: "radial-gradient(circle, oklch(0.6 0.25 280) 0%, transparent 65%)" }}
-        />
-        <div
-          className="absolute bottom-0 right-0 h-[400px] w-[400px] rounded-full opacity-[0.05] blur-3xl dark:opacity-[0.08]"
-          style={{ background: "radial-gradient(circle, oklch(0.65 0.22 320) 0%, transparent 65%)" }}
-        />
-      </div>
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-24 left-1/2 h-[480px] w-[600px] -translate-x-1/2 rounded-full opacity-25 blur-3xl"
+        style={{
+          background:
+            "radial-gradient(circle, oklch(0.6 0.25 280) 0%, transparent 65%)",
+        }}
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute right-[-8rem] top-[30%] h-80 w-80 rounded-full opacity-20 blur-3xl"
+        style={{
+          background:
+            "radial-gradient(circle, oklch(0.65 0.22 320) 0%, transparent 65%)",
+        }}
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-0 left-[-4rem] h-[350px] w-[350px] rounded-full opacity-15 blur-3xl"
+        style={{
+          background:
+            "radial-gradient(circle, oklch(0.7 0.18 240) 0%, transparent 65%)",
+        }}
+      />
 
-      {/* Hero */}
-      <div className="relative border-b border-border/50 bg-background/80 backdrop-blur-sm">
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background:
-              "linear-gradient(130deg, rgba(129,140,248,0.08) 0%, rgba(192,132,252,0.05) 50%, rgba(244,114,182,0.08) 100%)",
-          }}
-        />
-        <div className="relative mx-auto max-w-4xl px-4 py-8 sm:px-6">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-pink-500 shadow-md shadow-violet-500/20">
-                <Trophy className="size-6 text-white" />
+      {/* Content */}
+      <div className="relative mx-auto max-w-7xl space-y-6 px-4 py-6 sm:space-y-8 sm:px-6 sm:py-8 lg:px-8">
+        {/* Hero card — floating, matches dashboard style */}
+        <div className="relative overflow-hidden rounded-3xl border border-border/70 bg-card/70 p-5 backdrop-blur-sm sm:p-7">
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 opacity-60 pointer-events-none"
+            style={{
+              background:
+                "linear-gradient(130deg, rgba(129,140,248,0.18) 0%, rgba(192,132,252,0.12) 48%, rgba(244,114,182,0.18) 100%)",
+            }}
+          />
+          <div className="relative flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-violet-500/25 bg-violet-500/10">
+                <Trophy className="size-5 text-violet-600 dark:text-violet-400" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 via-violet-400 to-pink-400 bg-clip-text text-transparent">
+                <h1 className="text-2xl font-bold tracking-tight text-foreground leading-none">
                   Goals
                 </h1>
-                <p className="text-sm text-muted-foreground">
-                  Track everything that matters — nested, prioritized, and clear.
+                <p className="mt-1.5 text-sm text-muted-foreground">
+                  Track everything that matters — nested, prioritized, and
+                  clear.
                 </p>
               </div>
             </div>
-
             <Button
               onClick={openCreate}
-              className="gap-1.5 bg-gradient-to-r from-indigo-500 via-violet-500 to-pink-500 text-white border-0 shadow-md shadow-violet-500/25 hover:shadow-lg hover:shadow-violet-500/30 transition-all"
+              className="gap-1.5 bg-zinc-800 text-zinc-100 hover:bg-zinc-700 border border-zinc-700/50 shrink-0"
             >
-              <Plus className="size-4" />
-              <span className="hidden sm:inline">New Goal</span>
-              <span className="sm:hidden">New</span>
+              <Plus className="size-4" /> New Goal
             </Button>
           </div>
-
-          {/* Stats strip */}
-          {!loading && goals.length > 0 && (
-            <div className="mt-5 flex flex-wrap gap-3">
-              {[
-                { label: "Total", value: counts.ALL, color: "text-foreground" },
-                { label: "Active", value: counts.ACTIVE, color: "text-violet-600 dark:text-violet-400" },
-                { label: "Completed", value: counts.COMPLETED, color: "text-emerald-600 dark:text-emerald-400" },
-                { label: "Paused", value: counts.PAUSED, color: "text-amber-600 dark:text-amber-400" },
-              ].map((s) => (
-                <div
-                  key={s.label}
-                  className="flex items-center gap-2 rounded-xl border border-border/60 bg-card/60 px-3 py-2"
-                >
-                  <span className={cn("text-lg font-bold tabular-nums", s.color)}>
-                    {s.value}
-                  </span>
-                  <span className="text-xs text-muted-foreground">{s.label}</span>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 space-y-5">
+        {/* Stat cards — same pattern as dashboard */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5 lg:gap-4">
+          {[
+            {
+              label: "Total Goals",
+              value: displayCounts.ALL,
+              sub:
+                displayCounts.ALL === 0 ? "No goals yet" : `${displayCounts.ACTIVE} active`,
+              iconBg: "bg-slate-500/10 text-slate-600 dark:text-slate-400",
+              Icon: Target,
+            },
+            {
+              label: "Active",
+              value: displayCounts.ACTIVE,
+              sub: displayCounts.ACTIVE > 0 ? "In progress" : "Nothing active",
+              iconBg: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+              Icon: Play,
+            },
+            {
+              label: "Completed",
+              value: displayCounts.COMPLETED,
+              sub: displayCounts.COMPLETED > 0 ? "Goals achieved" : "None yet",
+              iconBg:
+                "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              Icon: CheckCircle2,
+            },
+            {
+              label: "Paused",
+              value: displayCounts.PAUSED,
+              sub: displayCounts.PAUSED > 0 ? "On hold" : "None paused",
+              iconBg: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+              Icon: Pause,
+            },
+            {
+              label: "Missed",
+              value: displayCounts.MISSED,
+              sub: displayCounts.MISSED > 0 ? "Need recovery" : "No missed goals",
+              iconBg: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
+              Icon: AlertTriangle,
+            },
+          ].map((s) => (
+            <Card
+              key={s.label}
+              className="hover:shadow-md transition-all duration-200 hover:-translate-y-0.5"
+            >
+              <CardContent className="p-5">
+                {countsLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-3.5 w-28" />
+                    <Skeleton className="h-9 w-16" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                ) : (
+                  <div className="flex items-start justify-between">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-2">
+                        {s.label}
+                      </p>
+                      <p className="text-3xl font-bold text-foreground leading-none mb-1.5 tabular-nums">
+                        {s.value}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {s.sub}
+                      </p>
+                    </div>
+                    <div
+                      className={cn("p-2.5 rounded-xl shrink-0 ml-3", s.iconBg)}
+                    >
+                      <s.Icon className="h-5 w-5" />
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
         {/* Filter bar */}
-        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-          {/* Status tabs */}
-          <Tabs value={statusFilter} onValueChange={setStatusFilter} className="flex-1">
-            <TabsList className="h-8 p-0.5 gap-0.5 flex-wrap">
-              {STATUS_TABS.map((s) => (
-                <TabsTrigger
-                  key={s}
-                  value={s}
-                  className="h-7 px-2.5 text-xs gap-1"
-                >
-                  {s === "ALL" ? "All" : s.charAt(0) + s.slice(1).toLowerCase()}
-                  <span className="text-[10px] opacity-60 font-normal">
-                    ({counts[s]})
-                  </span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+        <div className="flex flex-col gap-2 rounded-2xl border border-border/60 bg-card/70 px-3 py-2.5 backdrop-blur-sm sm:flex-row sm:items-center sm:py-2">
 
-          {/* Category filter */}
-          <div className="flex items-center gap-2 shrink-0">
-            <Filter className="size-3.5 text-muted-foreground" />
+          {/* Search + Category — top row on mobile, right side on desktop */}
+          <div className="flex items-center gap-2 sm:order-last sm:shrink-0">
+            {/* Search */}
+            <div className="relative flex items-center flex-1 sm:flex-none">
+              <Search className="absolute left-2.5 size-3.5 text-muted-foreground pointer-events-none shrink-0" />
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                placeholder="Search…"
+                className={cn(
+                  "h-8 w-full rounded-lg border bg-transparent pl-8 pr-7 text-xs outline-none transition-all sm:w-[140px] sm:focus:w-[200px]",
+                  isSearchMode
+                    ? "border-violet-500/50 text-foreground"
+                    : "border-border/60 text-muted-foreground focus:border-violet-500/40 focus:text-foreground",
+                  "placeholder:text-muted-foreground/60",
+                )}
+              />
+              {searchInput && (
+                <button
+                  onClick={handleClearSearch}
+                  className="absolute right-2 flex size-4 items-center justify-center rounded-full bg-muted/70 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  aria-label="Clear search"
+                >
+                  <X className="size-2.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Divider */}
+            <div className="h-5 w-px bg-border/60 shrink-0" />
+
+            {/* Category dropdown */}
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="h-8 w-[140px] text-xs">
+              <SelectTrigger
+                className={cn(
+                  "h-8 gap-1.5 border text-xs font-medium transition-all shrink-0 focus:ring-0 w-[120px] sm:w-[130px]",
+                  categoryFilter === "ALL"
+                    ? "border-border/60 bg-transparent text-muted-foreground"
+                    : "border-violet-500/50 bg-violet-500/10 text-violet-700 dark:text-violet-300",
+                )}
+              >
+                {categoryFilter !== "ALL" && (
+                  <span className="size-1.5 rounded-full bg-violet-500 shrink-0" />
+                )}
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent align="end">
                 <SelectItem value="ALL">All categories</SelectItem>
                 <SelectSeparator />
                 {GOAL_CATEGORIES.map((cat) => (
@@ -1099,50 +1632,151 @@ export default function GoalsPage() {
                 ))}
               </SelectContent>
             </Select>
-            {categoryFilter !== "ALL" && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-7"
-                onClick={() => setCategoryFilter("ALL")}
-              >
-                <X className="size-3.5" />
-              </Button>
-            )}
+          </div>
+
+          {/* Divider — desktop only, between status pills and right controls */}
+          <div className="hidden sm:block h-5 w-px bg-border/60 shrink-0 sm:order-2" />
+
+          {/* Status pills — bottom row on mobile, left side on desktop */}
+          <div className="scrollbar-none flex items-center gap-1 flex-1 overflow-x-auto min-w-0 sm:order-first">
+            {(
+              [
+                {
+                  key: "ALL",
+                  label: "All",
+                  dot: "bg-slate-400",
+                  activeBg: "bg-slate-100 dark:bg-slate-800",
+                  activeText: "text-slate-800 dark:text-slate-100",
+                  activeBorder: "border-slate-400/60",
+                },
+                {
+                  key: "ACTIVE",
+                  label: "Active",
+                  dot: "bg-violet-500",
+                  activeBg: "bg-violet-500/12",
+                  activeText: "text-violet-700 dark:text-violet-300",
+                  activeBorder: "border-violet-500/50",
+                },
+                {
+                  key: "PAUSED",
+                  label: "Paused",
+                  dot: "bg-amber-400",
+                  activeBg: "bg-amber-400/12",
+                  activeText: "text-amber-700 dark:text-amber-300",
+                  activeBorder: "border-amber-400/50",
+                },
+                {
+                  key: "COMPLETED",
+                  label: "Completed",
+                  dot: "bg-emerald-500",
+                  activeBg: "bg-emerald-500/12",
+                  activeText: "text-emerald-700 dark:text-emerald-300",
+                  activeBorder: "border-emerald-500/50",
+                },
+                {
+                  key: "ABANDONED",
+                  label: "Abandoned",
+                  dot: "bg-rose-400",
+                  activeBg: "bg-rose-400/12",
+                  activeText: "text-rose-700 dark:text-rose-300",
+                  activeBorder: "border-rose-400/50",
+                },
+                {
+                  key: "MISSED",
+                  label: "Missed",
+                  dot: "bg-red-500",
+                  activeBg: "bg-red-500/12",
+                  activeText: "text-red-700 dark:text-red-300",
+                  activeBorder: "border-red-500/50",
+                },
+              ] as const
+            ).map((s) => {
+              const isActive = statusFilter === s.key;
+              return (
+                <button
+                  key={s.key}
+                  onClick={() => setStatusFilter(s.key)}
+                  className={cn(
+                    "flex items-center gap-1.5 h-7 pl-2.5 pr-3 rounded-lg border text-xs font-medium transition-all shrink-0",
+                    isActive
+                      ? cn(s.activeBg, s.activeText, s.activeBorder)
+                      : "border-transparent bg-transparent text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "size-1.5 rounded-full shrink-0",
+                      s.dot,
+                      !isActive && "opacity-50",
+                    )}
+                  />
+                  {s.label}
+                  <span
+                    className={cn(
+                      "ml-0.5 rounded-full px-1.5 py-px text-[10px] leading-none font-normal tabular-nums",
+                      isActive
+                        ? "bg-black/10 dark:bg-white/15"
+                        : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {displayCounts[s.key]}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
         {/* Goal list */}
-        {loading ? (
+        {(isSearchMode ? searchLoading : loading) ? (
           <GoalsSkeleton />
-        ) : error ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+        ) : (isSearchMode ? searchError : error) ? (
+          <div className="flex flex-col items-center justify-center py-16 gap-3 text-center rounded-2xl border border-border/60 bg-card/60">
             <AlertTriangle className="size-8 text-destructive/60" />
-            <p className="font-semibold text-sm">Failed to load goals</p>
-            <p className="text-xs text-muted-foreground">{error}</p>
-            <Button variant="outline" size="sm" onClick={() => fetchGoals()}>
-              Try Again
-            </Button>
+            <p className="font-semibold text-sm">
+              {isSearchMode ? "Search failed" : "Failed to load goals"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {(isSearchMode ? searchError : error) ?? ""}
+            </p>
+            {!isSearchMode && (
+              <Button variant="outline" size="sm" onClick={() => fetchGoals({ page: 1, limit: PAGE_SIZE })}>
+                Try Again
+              </Button>
+            )}
           </div>
-        ) : filteredGoals.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
-            <div className="flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/10 via-violet-500/10 to-pink-500/10 border border-violet-500/20">
-              <Sparkles className="size-7 text-violet-500" />
+        ) : isSearchMode && searchResults.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-3 text-center rounded-2xl border border-border/60 bg-card/60">
+            <div className="flex size-14 items-center justify-center rounded-2xl border border-border/60 bg-muted/40">
+              <Search className="size-6 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="font-semibold text-base">No results for &ldquo;{searchInput.trim()}&rdquo;</p>
+              <p className="text-sm text-muted-foreground mt-1">Try a different keyword or clear the search.</p>
+            </div>
+          </div>
+        ) : pagedGoals.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-4 text-center rounded-2xl border border-border/60 bg-card/60">
+            <div className="flex size-16 items-center justify-center rounded-2xl border border-border/60 bg-muted/40">
+              <Sparkles className="size-7 text-muted-foreground" />
             </div>
             <div>
               <p className="font-semibold text-base">
-                {goals.length === 0 ? "No goals yet" : "No goals match your filters"}
+                {displayCounts.ALL === 0
+                  ? "No goals yet"
+                  : "No goals match your filters"}
               </p>
               <p className="text-sm text-muted-foreground mt-1">
-                {goals.length === 0
+                {displayCounts.ALL === 0
                   ? "Set your first goal and start building momentum."
                   : "Try adjusting your filters to see more goals."}
               </p>
             </div>
-            {goals.length === 0 && (
+            {displayCounts.ALL === 0 && (
               <Button
+                variant="outline"
                 onClick={openCreate}
-                className="gap-1.5 bg-gradient-to-r from-indigo-500 via-violet-500 to-pink-500 text-white border-0"
+                className="gap-1.5"
               >
                 <Plus className="size-4" />
                 Create First Goal
@@ -1151,17 +1785,59 @@ export default function GoalsPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {filteredGoals.map((goal) => (
+            {isSearchMode && (
+              <p className="text-xs text-muted-foreground px-0.5">
+                {totalGoals} result{totalGoals !== 1 ? "s" : ""} for &ldquo;{searchInput.trim()}&rdquo;
+              </p>
+            )}
+            {pagedGoals.map((goal) => (
               <GoalCard
                 key={goal.id}
                 goal={goal}
                 depth={0}
-                allGoals={goals}
                 onEdit={openEdit}
                 onAddChild={openAddChild}
               />
             ))}
           </div>
+        )}
+
+        {/* ── Load More ── */}
+        {!(isSearchMode ? searchLoading : loading) && !(isSearchMode ? searchError : error) && hasMore && (
+          <div className="flex flex-col items-center gap-2 pt-1">
+            <button
+              onClick={handleLoadMore}
+              disabled={loadingMore}
+              className={cn(
+                "group relative flex items-center gap-2.5 rounded-2xl border border-border/60 bg-card/70 px-6 py-3 text-sm font-medium backdrop-blur-sm transition-all duration-200",
+                "hover:border-violet-500/40 hover:bg-violet-500/5 hover:shadow-sm",
+                loadingMore && "cursor-not-allowed opacity-60",
+              )}
+            >
+              {loadingMore ? (
+                <>
+                  <span className="size-4 rounded-full border-2 border-violet-500/30 border-t-violet-500 animate-spin" />
+                  Loading…
+                </>
+              ) : (
+                <>
+                  <span className="text-muted-foreground group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
+                    Load {Math.min(PAGE_SIZE, totalGoals - loadedCount)} more
+                  </span>
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground tabular-nums">
+                    {totalGoals - loadedCount} remaining
+                  </span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* All loaded indicator */}
+        {!(isSearchMode ? searchLoading : loading) && !(isSearchMode ? searchError : error) && !hasMore && totalGoals > PAGE_SIZE && (
+          <p className="text-center text-[11px] text-muted-foreground tabular-nums pt-1">
+            All {totalGoals} {isSearchMode ? "results" : "goals"} shown
+          </p>
         )}
       </div>
 
@@ -1174,5 +1850,5 @@ export default function GoalsPage() {
         allGoals={goals}
       />
     </div>
-  )
+  );
 }

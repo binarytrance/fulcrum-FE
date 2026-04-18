@@ -1,6 +1,6 @@
-"use client"
+﻿"use client"
 
-import { useEffect, useState, useCallback, useMemo } from "react"
+import { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -17,21 +17,22 @@ import {
   Timer,
   Inbox,
   CheckCircle2,
-  Target,
   MoreHorizontal,
-  CalendarDays,
   CheckSquare,
-  AlertCircle,
   Sparkles,
+  RefreshCw,
+  X,
+  Search,
 } from "lucide-react"
-import type { Task, GoalPriority } from "@/types"
-import { getTasks } from "@/lib/tasks-api"
+import type { Task, Goal, GoalPriority, TaskStatus } from "@/types"
+import { getTasks, getPaginatedTasks, getTaskStats, searchTasks } from "@/lib/tasks-api"
+import type { TaskStatsResponse } from "@/lib/tasks-api"
 import { useTasksStore } from "@/store/tasks-store"
 import { useGoalsStore } from "@/store/goals-store"
 import { toast } from "@/components/ui/toast"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
 import { Progress } from "@/components/ui/progress"
@@ -70,13 +71,12 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
-import { CompleteTaskDialog } from "@/components/tasks/CompleteTaskDialog"
+// --- Constants ---
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
+const PAGE_SIZE = 10
 const PRIORITIES: GoalPriority[] = ["HIGH", "MEDIUM", "LOW"]
 
-// ─── Zod Schema ───────────────────────────────────────────────────────────────
+// --- Zod Schema ---
 
 const taskFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -84,16 +84,13 @@ const taskFormSchema = z.object({
   priority: z.enum(["HIGH", "MEDIUM", "LOW"]),
   type: z.enum(["PLANNED", "UNPLANNED"]),
   scheduledFor: z.string().optional(),
-  estimatedDuration: z
-    .number()
-    .min(1, "At least 1 minute")
-    .optional(),
+  estimatedDuration: z.number().min(1, "At least 1 minute").optional(),
   goalId: z.string().optional(),
 })
 
 type TaskFormValues = z.infer<typeof taskFormSchema>
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// --- Helpers ---
 
 function taskStatusVariant(s: string): "secondary" | "warning" | "success" | "destructive" {
   switch (s) {
@@ -112,18 +109,20 @@ function priorityVariant(p: GoalPriority): "destructive" | "warning" | "secondar
   }
 }
 
+function todayIso(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+}
+
 function formatDisplayDate(iso: string): string {
   return new Date(iso + "T00:00:00").toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
+    weekday: "long", month: "long", day: "numeric",
   })
 }
 
 function formatShortDate(iso: string): string {
   return new Date(iso + "T00:00:00").toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
+    month: "short", day: "numeric",
   })
 }
 
@@ -134,21 +133,29 @@ function isToday(iso: string): boolean {
 function navigateDate(iso: string, dir: "prev" | "next"): string {
   const d = new Date(iso + "T00:00:00")
   d.setDate(d.getDate() + (dir === "next" ? 1 : -1))
-  return d.toISOString().split("T")[0]
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
 }
 
-function todayIso(): string {
-  return new Date().toISOString().split("T")[0]
-}
-
-function formatDuration(minutes: number): string {
+function formatDuration(ms: number): string {
+  const minutes = Math.round(ms / 60000)
   if (minutes < 60) return `${minutes}m`
   const h = Math.floor(minutes / 60)
   const m = minutes % 60
   return m > 0 ? `${h}h ${m}m` : `${h}h`
 }
 
-// ─── Create Task Dialog ───────────────────────────────────────────────────────
+function flattenGoals(goals: Goal[]): Map<string, { title: string; status: Goal["status"] }> {
+  const map = new Map<string, { title: string; status: Goal["status"] }>()
+  function walk(list: Goal[]) {
+    for (const g of list) {
+      map.set(g.id, { title: g.title, status: g.status })
+    }
+  }
+  walk(goals)
+  return map
+}
+
+// --- Create Task Dialog ---
 
 interface CreateTaskDialogProps {
   open: boolean
@@ -158,65 +165,40 @@ interface CreateTaskDialogProps {
   onCreated: () => void
 }
 
-function CreateTaskDialog({
-  open,
-  onClose,
-  defaultDate,
-  goals,
-  onCreated,
-}: CreateTaskDialogProps) {
+function CreateTaskDialog({ open, onClose, defaultDate, goals, onCreated }: CreateTaskDialogProps) {
   const { createTask } = useTasksStore()
   const [submitting, setSubmitting] = useState(false)
 
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskFormSchema),
     defaultValues: {
-      title: "",
-      description: "",
-      priority: "MEDIUM",
-      type: "PLANNED",
-      scheduledFor: defaultDate,
-      estimatedDuration: undefined,
-      goalId: "",
+      title: "", description: "", priority: "MEDIUM", type: "PLANNED",
+      scheduledFor: defaultDate, estimatedDuration: undefined, goalId: "",
     },
   })
-
   const taskType = form.watch("type")
 
   useEffect(() => {
-    if (open) {
-      form.reset({
-        title: "",
-        description: "",
-        priority: "MEDIUM",
-        type: "PLANNED",
-        scheduledFor: defaultDate,
-        estimatedDuration: undefined,
-        goalId: "",
-      })
-    }
+    if (open) form.reset({
+      title: "", description: "", priority: "MEDIUM", type: "PLANNED",
+      scheduledFor: defaultDate, estimatedDuration: undefined, goalId: "",
+    })
   }, [open, defaultDate]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const onSubmit = async (data: TaskFormValues) => {
     setSubmitting(true)
     try {
-      const scheduledForIso =
-        data.type === "PLANNED" && data.scheduledFor
-          ? new Date(data.scheduledFor + "T00:00:00.000Z").toISOString()
-          : undefined
-
-      const estimatedDurationMs =
-        data.estimatedDuration != null
-          ? Math.round(data.estimatedDuration * 60 * 1000)
-          : undefined
-
       await createTask({
         title: data.title,
         description: data.description || undefined,
         priority: data.priority,
         type: data.type,
-        scheduledFor: scheduledForIso,
-        estimatedDuration: estimatedDurationMs,
+        scheduledFor: data.type === "PLANNED" && data.scheduledFor
+          ? new Date(data.scheduledFor + "T00:00:00.000Z").toISOString()
+          : undefined,
+        estimatedDuration: data.estimatedDuration != null
+          ? Math.round(data.estimatedDuration * 60 * 1000)
+          : undefined,
         goalId: data.goalId && data.goalId !== "none" ? data.goalId : undefined,
       })
       toast.success("Task created!")
@@ -241,186 +223,93 @@ function CreateTaskDialog({
           </DialogTitle>
           <DialogDescription>Add a task to your planner or inbox.</DialogDescription>
         </DialogHeader>
-
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-1">
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    Title <span className="text-destructive">*</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g. Review pull request" autoFocus {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Any extra context…"
-                      rows={2}
-                      className="resize-none"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
+            <FormField control={form.control} name="title" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Title <span className="text-destructive">*</span></FormLabel>
+                <FormControl><Input placeholder="e.g. Review pull request" autoFocus {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="description" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Description</FormLabel>
+                <FormControl><Textarea placeholder="Any extra context..." rows={2} className="resize-none" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
             <div className="grid grid-cols-2 gap-3">
-              <FormField
-                control={form.control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Type <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="PLANNED">📅 Planned</SelectItem>
-                        <SelectItem value="UNPLANNED">📥 Unplanned</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="priority"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Priority <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {PRIORITIES.map((p) => (
-                          <SelectItem key={p} value={p}>
-                            {p.charAt(0) + p.slice(1).toLowerCase()}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <FormField control={form.control} name="type" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Type <span className="text-destructive">*</span></FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      <SelectItem value="PLANNED">Planned</SelectItem>
+                      <SelectItem value="UNPLANNED">Unplanned</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="priority" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Priority <span className="text-destructive">*</span></FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      {PRIORITIES.map((p) => (
+                        <SelectItem key={p} value={p}>{p.charAt(0) + p.slice(1).toLowerCase()}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
             </div>
-
             <div className="grid grid-cols-2 gap-3">
               {taskType === "PLANNED" && (
-                <FormField
-                  control={form.control}
-                  name="scheduledFor"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Scheduled For</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-
-              <FormField
-                control={form.control}
-                name="estimatedDuration"
-                render={({ field }) => (
-                  <FormItem className={taskType === "UNPLANNED" ? "col-span-2" : ""}>
-                    <FormLabel>
-                      Est. Duration (min) <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={1}
-                        step={1}
-                        placeholder="e.g. 30"
-                        value={field.value ?? ""}
-                        onChange={(e) =>
-                          field.onChange(
-                            e.target.value === ""
-                              ? undefined
-                              : parseInt(e.target.value, 10)
-                          )
-                        }
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {goals.length > 0 && (
-              <FormField
-                control={form.control}
-                name="goalId"
-                render={({ field }) => (
+                <FormField control={form.control} name="scheduledFor" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Link to Goal</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || "none"}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="No goal" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">No goal</SelectItem>
-                        <SelectSeparator />
-                        {goals.map((g) => (
-                          <SelectItem key={g.id} value={g.id}>
-                            {g.title}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Scheduled For</FormLabel>
+                    <FormControl><Input type="date" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
-                )}
-              />
+                )} />
+              )}
+              <FormField control={form.control} name="estimatedDuration" render={({ field }) => (
+                <FormItem className={taskType === "UNPLANNED" ? "col-span-2" : ""}>
+                  <FormLabel>Est. Duration (min) <span className="text-destructive">*</span></FormLabel>
+                  <FormControl>
+                    <Input type="number" min={1} step={1} placeholder="e.g. 30"
+                      value={field.value ?? ""}
+                      onChange={(e) => field.onChange(e.target.value === "" ? undefined : parseInt(e.target.value, 10))} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
+            {goals.length > 0 && (
+              <FormField control={form.control} name="goalId" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Link to Goal</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value || "none"}>
+                    <FormControl><SelectTrigger><SelectValue placeholder="No goal" /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">No goal</SelectItem>
+                      <SelectSeparator />
+                      {goals.map((g) => <SelectItem key={g.id} value={g.id}>{g.title}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
             )}
-
             <DialogFooter className="pt-2 gap-2 sm:gap-0">
-              <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
-                Cancel
-              </Button>
+              <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>Cancel</Button>
               <Button type="submit" disabled={submitting}>
-                {submitting ? (
-                  <span className="flex items-center gap-2">
-                    <span className="size-3.5 rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground animate-spin" />
-                    Creating…
-                  </span>
-                ) : (
-                  "Create Task"
-                )}
+                {submitting ? "Creating..." : "Create Task"}
               </Button>
             </DialogFooter>
           </form>
@@ -430,16 +319,15 @@ function CreateTaskDialog({
   )
 }
 
-// ─── Task Row ─────────────────────────────────────────────────────────────────
+// --- Task Row ---
 
 interface TaskRowProps {
   task: Task
   onComplete: (task: Task) => void
   onRefresh: () => void
-  variant?: "daily" | "inbox"
 }
 
-function TaskRow({ task, onComplete, onRefresh, variant = "daily" }: TaskRowProps) {
+function TaskRow({ task, onComplete, onRefresh }: TaskRowProps) {
   const { updateTask, deleteTask } = useTasksStore()
   const [actionLoading, setActionLoading] = useState(false)
 
@@ -468,40 +356,32 @@ function TaskRow({ task, onComplete, onRefresh, variant = "daily" }: TaskRowProp
   }
 
   return (
-    <div
-      className={cn(
-        "group flex items-start gap-3 rounded-xl border px-3.5 py-3 transition-all duration-150",
-        isDone && "bg-muted/20 border-transparent opacity-55",
-        isActive && !isDone && "border-violet-500/30 bg-violet-500/[0.04] dark:bg-violet-500/[0.06]",
-        !isDone && !isActive && "bg-card/80 border-border/60 hover:border-border hover:bg-card"
-      )}
-    >
-      {/* Check button */}
+    <div className={cn(
+      "group flex items-start gap-3 rounded-xl border px-3.5 py-3 transition-all duration-150",
+      isDone && "bg-muted/20 border-transparent opacity-55",
+      isActive && !isDone && "border-violet-500/30 bg-violet-500/[0.04] dark:bg-violet-500/[0.06]",
+      !isDone && !isActive && "bg-card/60 border-border/50 hover:border-border hover:bg-card"
+    )}>
       <button
         onClick={() => !isDone && onComplete(task)}
         disabled={isDone || actionLoading}
-        aria-label={isDone ? "Completed" : "Mark complete"}
         className={cn(
-          "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition-all",
+          "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition-all group/tick",
           isDone && "border-emerald-400 bg-emerald-400 text-white",
-          isActive && !isDone && "border-violet-500 hover:bg-violet-50 dark:hover:bg-violet-950/30",
-          !isDone && !isActive && "border-muted-foreground/40 hover:border-violet-500 hover:bg-violet-500/5"
+          isActive && !isDone && "border-violet-500 hover:bg-violet-500 hover:text-white",
+          !isDone && !isActive && "border-muted-foreground/50 hover:border-emerald-500 hover:bg-emerald-500 hover:text-white"
         )}
       >
-        {isDone && <CheckCircle2 className="size-3.5" />}
+        {isDone
+          ? <CheckCircle2 className="size-3.5" />
+          : <CheckCircle2 className="size-3.5 opacity-0 group-hover/tick:opacity-100 transition-opacity" />
+        }
       </button>
 
-      {/* Content */}
       <div className="flex-1 min-w-0">
-        <p
-          className={cn(
-            "text-sm font-medium leading-snug",
-            isDone && "line-through text-muted-foreground"
-          )}
-        >
+        <p className={cn("text-sm font-medium leading-snug", isDone && "line-through text-muted-foreground")}>
           {task.title}
         </p>
-
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
           <Badge variant={taskStatusVariant(task.status)} className="text-[10px] px-1.5 py-0">
             {task.status.replace("_", " ")}
@@ -509,94 +389,95 @@ function TaskRow({ task, onComplete, onRefresh, variant = "daily" }: TaskRowProp
           <Badge variant={priorityVariant(task.priority)} className="text-[10px] px-1.5 py-0">
             {task.priority}
           </Badge>
-          {task.estimatedDuration !== undefined && (
+          {task.type === "UNPLANNED" ? (
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-500/10 px-1.5 py-px text-[10px] font-medium text-amber-600 dark:text-amber-400">
+              <Inbox className="size-2.5" /> Unplanned
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-violet-500/10 px-1.5 py-px text-[10px] font-medium text-violet-700 dark:text-violet-300">
+              <Calendar className="size-2.5" /> Planned
+            </span>
+          )}
+          {task.scheduledFor && (
             <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-              <Clock className="size-2.5" />
-              {formatDuration(task.estimatedDuration)}
+              <Calendar className="size-2.5" />
+              {formatShortDate(task.scheduledFor.split("T")[0])}
             </span>
           )}
-          {task.actualDuration !== undefined && (
+          {task.estimatedDuration != null && (
+            <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+              <Clock className="size-2.5" />{formatDuration(task.estimatedDuration)}
+            </span>
+          )}
+          {task.actualDuration != null && (
             <span className="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5 font-medium">
-              <CheckCircle2 className="size-2.5" />
-              {formatDuration(task.actualDuration)} actual
+              <CheckCircle2 className="size-2.5" />{formatDuration(task.actualDuration)} actual
             </span>
           )}
-          {task.efficiencyScore !== undefined && (
-            <span
-              className={cn(
-                "text-[10px] font-semibold",
-                task.efficiencyScore >= 100 ? "text-emerald-600 dark:text-emerald-400" :
-                task.efficiencyScore >= 75  ? "text-amber-600 dark:text-amber-400" : "text-red-500"
-              )}
-            >
+          {task.efficiencyScore != null && (
+            <span className={cn("text-[10px] font-semibold",
+              task.efficiencyScore >= 100 ? "text-emerald-600" :
+              task.efficiencyScore >= 75  ? "text-amber-600" : "text-red-500")}>
               {task.efficiencyScore}%
             </span>
+          )}
+          {task.goalTitle && task.goalId && (
+            <Link
+              href={`/goals/${task.goalId}`}
+              onClick={(e) => e.stopPropagation()}
+              className="text-[10px] text-muted-foreground bg-muted/70 rounded px-1.5 py-px truncate max-w-[120px] hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-500/10 transition-colors"
+            >
+              {task.goalTitle}
+            </Link>
           )}
         </div>
       </div>
 
-      {/* Hover actions */}
       {!isDone && (
         <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+            onClick={() => onComplete(task)}
+            disabled={actionLoading}
+            title="Complete task"
+          >
+            <CheckCircle2 className="size-3.5" />
+          </Button>
           {isActive && (
-            <Button variant="ghost" size="icon" className="size-7" asChild title="Open timer">
-              <Link href={`/timer/${task.id}`}>
-                <Timer className="size-3.5 text-violet-500" />
-              </Link>
+            <Button variant="ghost" size="icon" className="size-7" asChild>
+              <Link href={`/timer/${task.id}`}><Timer className="size-3.5 text-violet-500" /></Link>
             </Button>
           )}
           {!isActive && (
-            <Button
-              variant="ghost"
-              size="icon"
+            <Button variant="ghost" size="icon"
               className="size-7 text-violet-600 hover:text-violet-700 hover:bg-violet-50 dark:hover:bg-violet-950/30"
-              onClick={() => handleAction("start")}
-              disabled={actionLoading}
-              title="Start task"
-            >
+              onClick={() => handleAction("start")} disabled={actionLoading}>
               <Play className="size-3.5" />
             </Button>
           )}
           {isActive && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              onClick={() => handleAction("pause")}
-              disabled={actionLoading}
-              title="Pause"
-            >
+            <Button variant="ghost" size="icon" className="size-7"
+              onClick={() => handleAction("pause")} disabled={actionLoading}>
               <Pause className="size-3.5" />
             </Button>
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-7 opacity-60 hover:opacity-100"
-                disabled={actionLoading}
-              >
+              <Button variant="ghost" size="icon" className="size-7 opacity-60 hover:opacity-100" disabled={actionLoading}>
                 <MoreHorizontal className="size-3.5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
               <DropdownMenuLabel className="text-xs">Actions</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => onComplete(task)}>
-                <CheckCircle2 className="size-3.5" />
-                Complete
-              </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href={`/timer/${task.id}`}>
-                  <Timer className="size-3.5" />
-                  Open Timer
-                </Link>
+                <Link href={`/timer/${task.id}`}><Timer className="size-3.5" /> Open Timer</Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem destructive onClick={() => handleAction("delete")}>
-                <Trash2 className="size-3.5" />
-                Delete
+                <Trash2 className="size-3.5" /> Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -606,11 +487,9 @@ function TaskRow({ task, onComplete, onRefresh, variant = "daily" }: TaskRowProp
   )
 }
 
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
-
 function TaskRowSkeleton() {
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-border/60 px-3.5 py-3">
+    <div className="flex items-start gap-3 rounded-xl border border-border/50 px-3.5 py-3">
       <Skeleton className="size-5 rounded-full shrink-0 mt-0.5" />
       <div className="flex-1 space-y-1.5">
         <Skeleton className="h-4 w-3/4" />
@@ -623,444 +502,464 @@ function TaskRowSkeleton() {
   )
 }
 
-// ─── Day Stats Card ───────────────────────────────────────────────────────────
+// --- Tasks Page ---
 
-function DayStats({ tasks, date }: { tasks: Task[]; date: string }) {
-  const total = tasks.length
-  const completed = tasks.filter((t) => t.status === "COMPLETED").length
-  const inProgress = tasks.filter((t) => t.status === "IN_PROGRESS").length
-  const pending = tasks.filter((t) => t.status === "PENDING").length
-  const totalMins = tasks
-    .filter((t) => t.actualDuration !== undefined)
-    .reduce((sum, t) => sum + (t.actualDuration ?? 0), 0)
-  const pct = total > 0 ? Math.round((completed / total) * 100) : 0
-
-  return (
-    <Card className="rounded-2xl border border-border/70 bg-card/80 backdrop-blur-sm">
-      <CardHeader className="pb-2 pt-4 px-4">
-        <CardTitle className="text-sm flex items-center gap-2">
-          <CalendarDays className="size-3.5 text-violet-500" />
-          {isToday(date) ? "Today's Overview" : formatShortDate(date)}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="px-4 pb-4 pt-0">
-        {total === 0 ? (
-          <p className="text-xs text-muted-foreground py-2">No tasks for this day.</p>
-        ) : (
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Completion</span>
-                <span className="font-semibold tabular-nums">{pct}%</span>
-              </div>
-              <Progress
-                value={pct}
-                className={cn(
-                  "h-1.5",
-                  pct >= 100 && "[&>div]:bg-emerald-500",
-                  pct >= 50 && pct < 100 && "[&>div]:bg-violet-500",
-                  pct < 50 && "[&>div]:bg-indigo-400"
-                )}
-              />
-            </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { label: "Done", value: completed, cls: "text-emerald-600 dark:text-emerald-400" },
-                { label: "Active", value: inProgress, cls: "text-violet-600 dark:text-violet-400" },
-                { label: "Pending", value: pending, cls: "text-foreground" },
-              ].map((s) => (
-                <div key={s.label} className="rounded-xl bg-muted/50 px-2 py-2 text-center">
-                  <p className={cn("text-lg font-bold tabular-nums", s.cls)}>{s.value}</p>
-                  <p className="text-[10px] text-muted-foreground">{s.label}</p>
-                </div>
-              ))}
-            </div>
-
-            {totalMins > 0 && (
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Clock className="size-3" />
-                <span>
-                  <span className="font-medium text-foreground">{formatDuration(totalMins)}</span>{" "}
-                  logged
-                </span>
-              </div>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
-
-// ─── Tasks Page ───────────────────────────────────────────────────────────────
+type StatusFilter = "ALL" | "PENDING" | "IN_PROGRESS" | "COMPLETED"
 
 export default function TasksPage() {
   const { completeTask, currentDate, setCurrentDate } = useTasksStore()
   const { goals, fetchGoals } = useGoalsStore()
 
-  const [dailyTasks, setDailyTasks] = useState<Task[]>([])
-  const [inboxTasks, setInboxTasks] = useState<Task[]>([])
-  const [overdueTasks, setOverdueTasks] = useState<Task[]>([])
+  // Paginated main task list
+  const [pagedTasks,   setPagedTasks]   = useState<Task[]>([])
+  const [pagination,   setPagination]   = useState<{ total: number; page: number; totalPages: number } | null>(null)
+  const [loadingList,  setLoadingList]  = useState(false)
+  const [loadingMore,  setLoadingMore]  = useState(false)
+
+  // Stats from API
+  const [stats,        setStats]        = useState<TaskStatsResponse | null>(null)
+  const [statsLoading, setStatsLoading] = useState(false)
+
+  // Sidebar
+  const [dailyTasks,   setDailyTasks]   = useState<Task[]>([])
+  const [inboxTasks,   setInboxTasks]   = useState<Task[]>([])
   const [loadingDaily, setLoadingDaily] = useState(false)
   const [loadingInbox, setLoadingInbox] = useState(false)
+  const [unplannedDate, setUnplannedDate] = useState<string | null>(todayIso())
 
-  const [createOpen, setCreateOpen] = useState(false)
-  const [completingTask, setCompletingTask] = useState<Task | null>(null)
-  const [completeDialogOpen, setCompleteDialogOpen] = useState(false)
+  const [statusFilter,        setStatusFilter]        = useState<StatusFilter>("ALL")
+  const [createOpen,          setCreateOpen]          = useState(false)
+
+
+  // Search
+  const [searchInput,         setSearchInput]         = useState("")
+  const [searchResults,       setSearchResults]       = useState<Task[]>([])
+  const [searchPagination,    setSearchPagination]    = useState<{ total: number; page: number; totalPages: number } | null>(null)
+  const [searchLoading,       setSearchLoading]       = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isSearchMode = searchInput.trim().length > 0
+
+  const fetchStats = useCallback(async () => {
+    setStatsLoading(true)
+    try { const data = await getTaskStats(); setStats(data) }
+    catch { /* silent */ } finally { setStatsLoading(false) }
+  }, [])
+
+  const fetchTaskList = useCallback(async (page = 1, append = false) => {
+    if (append) setLoadingMore(true)
+    else setLoadingList(true)
+    try {
+      const data = await getPaginatedTasks({
+        ...(statusFilter !== "ALL" ? { status: statusFilter as TaskStatus } : {}),
+        page,
+        limit: PAGE_SIZE,
+      })
+      setPagedTasks(prev => {
+        const merged = append ? [...prev, ...data.items] : data.items
+        const seen = new Set<string>()
+        return merged.filter(t => { if (seen.has(t.id)) return false; seen.add(t.id); return true })
+      })
+      setPagination({ total: data.total, page: data.page, totalPages: data.totalPages })
+    } catch { /* silent */ } finally {
+      if (append) setLoadingMore(false)
+      else setLoadingList(false)
+    }
+  }, [statusFilter])
 
   const fetchDailyTasks = useCallback(async () => {
     setLoadingDaily(true)
-    try {
-      const data = await getTasks({ date: currentDate, type: "PLANNED" })
-      setDailyTasks(data)
-    } catch (err) {
-      toast.error("Failed to load tasks", err instanceof Error ? err.message : undefined)
-    } finally {
-      setLoadingDaily(false)
-    }
+    try { const data = await getTasks({ date: currentDate, type: "PLANNED" }); setDailyTasks(data) }
+    catch { /* silent */ } finally { setLoadingDaily(false) }
   }, [currentDate])
 
   const fetchInboxTasks = useCallback(async () => {
     setLoadingInbox(true)
     try {
-      const data = await getTasks({ type: "UNPLANNED" })
-      setInboxTasks(data.filter((t) => t.status === "PENDING" || t.status === "IN_PROGRESS"))
-    } catch (err) {
-      toast.error("Failed to load inbox", err instanceof Error ? err.message : undefined)
-    } finally {
-      setLoadingInbox(false)
-    }
-  }, [])
-
-  const fetchOverdueTasks = useCallback(async () => {
-    try {
-      const today = todayIso()
-      const [pending, inProgress] = await Promise.all([
-        getTasks({ type: "PLANNED", status: "PENDING" }),
-        getTasks({ type: "PLANNED", status: "IN_PROGRESS" }),
-      ])
-      setOverdueTasks(
-        [...pending, ...inProgress].filter((t) => {
-          const taskDate = t.scheduledFor?.split("T")[0]
-          return taskDate !== undefined && taskDate < today
-        })
-      )
-    } catch {
-      // non-critical
-    }
-  }, [])
+      const data = await getTasks({ type: "UNPLANNED", ...(unplannedDate ? { date: unplannedDate } : {}) })
+      setInboxTasks(data)
+    } catch { /* silent */ } finally { setLoadingInbox(false) }
+  }, [unplannedDate])
 
   const refreshAll = useCallback(() => {
-    fetchDailyTasks()
-    fetchInboxTasks()
-    fetchOverdueTasks()
-  }, [fetchDailyTasks, fetchInboxTasks, fetchOverdueTasks])
+    fetchStats(); fetchTaskList(1, false); fetchDailyTasks(); fetchInboxTasks()
+  }, [fetchStats, fetchTaskList, fetchDailyTasks, fetchInboxTasks])
 
-  useEffect(() => {
-    fetchGoals()
-    fetchInboxTasks()
-    fetchOverdueTasks()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    fetchDailyTasks()
-  }, [fetchDailyTasks])
-
-  const openCompleteDialog = useCallback((task: Task) => {
-    setCompletingTask(task)
-    setCompleteDialogOpen(true)
+  const runSearch = useCallback(async (q: string, page = 1, append = false) => {
+    if (append) setLoadingMore(true)
+    else setSearchLoading(true)
+    try {
+      const data = await searchTasks(q, { page, limit: PAGE_SIZE })
+      setSearchResults(prev => {
+        const merged = append ? [...prev, ...data.items] : data.items
+        const seen = new Set<string>()
+        return merged.filter(t => { if (seen.has(t.id)) return false; seen.add(t.id); return true })
+      })
+      setSearchPagination({ total: data.total, page: data.page, totalPages: data.totalPages })
+    } catch { /* silent */ } finally {
+      if (append) setLoadingMore(false)
+      else setSearchLoading(false)
+    }
   }, [])
 
-  const handleComplete = useCallback(
-    async (actualDuration: number) => {
-      if (!completingTask) return
-      await completeTask(completingTask.id, actualDuration)
-      toast.success("🎉 Task completed!")
-      refreshAll()
-    },
-    [completingTask, completeTask, refreshAll]
-  )
+  const handleSearchChange = (value: string) => {
+    setSearchInput(value)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (!value.trim()) {
+      setSearchResults([])
+      setSearchPagination(null)
+      return
+    }
+    debounceRef.current = setTimeout(() => {
+      runSearch(value.trim(), 1, false)
+    }, 350)
+  }
 
-  const handleDateNav = useCallback(
-    (dir: "prev" | "next") => setCurrentDate(navigateDate(currentDate, dir)),
-    [currentDate, setCurrentDate]
-  )
+  const handleClearSearch = () => {
+    setSearchInput("")
+    setSearchResults([])
+    setSearchPagination(null)
+  }
 
-  const goalsForSelect = useMemo(
-    () => goals.filter((g) => g.status === "ACTIVE"),
-    [goals]
-  )
+  // Initial load (fetchTaskList is handled by the statusFilter effect below which runs on mount too)
+  useEffect(() => {
+    fetchGoals(); fetchStats(); fetchInboxTasks()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const inProgressTasks = useMemo(() => dailyTasks.filter((t) => t.status === "IN_PROGRESS"), [dailyTasks])
-  const pendingTasks = useMemo(() => dailyTasks.filter((t) => t.status === "PENDING"), [dailyTasks])
-  const completedDailyTasks = useMemo(() => dailyTasks.filter((t) => t.status === "COMPLETED"), [dailyTasks])
+  // Fetch task list on mount and whenever status filter changes
+  useEffect(() => {
+    fetchTaskList(1, false)
+  }, [statusFilter]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { fetchDailyTasks() }, [fetchDailyTasks])
+  useEffect(() => { fetchInboxTasks() }, [fetchInboxTasks])
+
+  const handleLoadMore = async () => {
+    if (isSearchMode) {
+      if (!searchPagination || searchPagination.page >= searchPagination.totalPages) return
+      await runSearch(searchInput.trim(), searchPagination.page + 1, true)
+    } else {
+      if (!pagination || pagination.page >= pagination.totalPages) return
+      await fetchTaskList(pagination.page + 1, true)
+    }
+  }
+
+  const handleCompleteTask = useCallback(async (task: Task) => {
+    await completeTask(task.id)
+    toast.success("Task completed!")
+    refreshAll()
+  }, [completeTask, refreshAll])
+
+  const goalsMap = useMemo(() => flattenGoals(goals), [goals])
+
+  const goalsForSelect = useMemo(() => {
+    const flat: { id: string; title: string }[] = []
+    goalsMap.forEach((v, k) => { if (v.status === "ACTIVE") flat.push({ id: k, title: v.title }) })
+    return flat
+  }, [goalsMap])
 
   const isCurrToday = isToday(currentDate)
 
-  return (
-    <div className="relative min-h-screen overflow-x-hidden">
-      {/* Ambient blobs */}
-      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div
-          className="absolute -top-20 right-1/4 h-[400px] w-[400px] rounded-full opacity-[0.05] blur-3xl dark:opacity-[0.09]"
-          style={{ background: "radial-gradient(circle, oklch(0.6 0.25 280) 0%, transparent 65%)" }}
-        />
-        <div
-          className="absolute bottom-0 left-0 h-[350px] w-[350px] rounded-full opacity-[0.04] blur-3xl dark:opacity-[0.07]"
-          style={{ background: "radial-gradient(circle, oklch(0.65 0.22 320) 0%, transparent 65%)" }}
-        />
-      </div>
+  const activePagination = isSearchMode ? searchPagination : pagination
+  const displayTasks     = isSearchMode ? searchResults    : pagedTasks
+  const hasMore          = activePagination ? activePagination.page < activePagination.totalPages : false
+  const totalCount       = activePagination?.total ?? 0
+  const loadedCount      = displayTasks.length
 
-      {/* Hero header */}
-      <div className="relative border-b border-border/50 bg-background/80 backdrop-blur-sm">
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background:
-              "linear-gradient(130deg, rgba(129,140,248,0.08) 0%, rgba(192,132,252,0.05) 50%, rgba(244,114,182,0.08) 100%)",
-          }}
-        />
-        <div className="relative mx-auto max-w-6xl px-4 py-5 sm:px-6">
-          <div className="flex items-center justify-between gap-4">
+  const STATUS_TABS: { key: StatusFilter; label: string; count: number | null }[] = [
+    { key: "ALL",         label: "All",         count: stats?.total ?? null },
+    { key: "PENDING",     label: "Pending",     count: stats?.byStatus.PENDING ?? null },
+    { key: "IN_PROGRESS", label: "In Progress", count: stats?.byStatus.IN_PROGRESS ?? null },
+    { key: "COMPLETED",   label: "Completed",   count: stats?.byStatus.COMPLETED ?? null },
+  ]
+
+  const statTiles = [
+    {
+      label: "Total",
+      value: stats?.total ?? 0,
+      sub: stats ? `${stats.byStatus.IN_PROGRESS} in progress` : "Loading…",
+      iconBg: "bg-slate-500/10 text-slate-600 dark:text-slate-400",
+      Icon: CheckSquare,
+    },
+    {
+      label: "In Progress",
+      value: stats?.byStatus.IN_PROGRESS ?? 0,
+      sub: (stats?.byStatus.IN_PROGRESS ?? 0) > 0 ? "Currently active" : "Nothing active",
+      iconBg: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+      Icon: Play,
+    },
+    {
+      label: "Completed",
+      value: stats?.byStatus.COMPLETED ?? 0,
+      sub: (stats?.byStatus.COMPLETED ?? 0) > 0 ? "Tasks finished" : "None completed",
+      iconBg: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+      Icon: CheckCircle2,
+    },
+    {
+      label: "Pending",
+      value: stats?.byStatus.PENDING ?? 0,
+      sub: (stats?.byStatus.PENDING ?? 0) > 0 ? "Awaiting action" : "All clear!",
+      iconBg: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+      Icon: Clock,
+    },
+  ]
+
+  return (
+    <div className="relative min-h-screen overflow-x-clip bg-background">
+      <div aria-hidden className="pointer-events-none absolute -top-24 left-1/2 h-[480px] w-[600px] -translate-x-1/2 rounded-full opacity-20 blur-3xl"
+        style={{ background: "radial-gradient(circle, oklch(0.6 0.25 280) 0%, transparent 65%)" }} />
+      <div aria-hidden className="pointer-events-none absolute right-[-8rem] top-[30%] h-80 w-80 rounded-full opacity-15 blur-3xl"
+        style={{ background: "radial-gradient(circle, oklch(0.65 0.22 320) 0%, transparent 65%)" }} />
+      <div aria-hidden className="pointer-events-none absolute bottom-0 left-[-4rem] h-[350px] w-[350px] rounded-full opacity-10 blur-3xl"
+        style={{ background: "radial-gradient(circle, oklch(0.7 0.18 240) 0%, transparent 65%)" }} />
+
+      <div className="relative mx-auto max-w-7xl space-y-6 px-4 py-6 sm:space-y-8 sm:px-6 sm:py-8 lg:px-8">
+
+        {/* Hero */}
+        <div className="relative overflow-hidden rounded-3xl border border-border/70 bg-card/70 p-5 backdrop-blur-sm sm:p-7">
+          <div aria-hidden className="absolute inset-0 opacity-60 pointer-events-none"
+            style={{ background: "linear-gradient(130deg, rgba(129,140,248,0.18) 0%, rgba(192,132,252,0.12) 48%, rgba(244,114,182,0.18) 100%)" }} />
+          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
-              <div className="flex size-11 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-pink-500 shadow-md shadow-violet-500/20">
-                <CheckSquare className="size-5 text-white" />
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl border border-violet-500/30 bg-violet-500/10">
+                <CheckSquare className="size-5 text-violet-600 dark:text-violet-400" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 via-violet-400 to-pink-400 bg-clip-text text-transparent">
-                  Tasks
-                </h1>
-                <p className="text-sm text-muted-foreground">Daily planner &amp; inbox</p>
+                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Tasks</h1>
+                <p className="text-sm text-muted-foreground mt-0.5">Everything you need to get done.</p>
               </div>
             </div>
-
-            <Button
-              onClick={() => setCreateOpen(true)}
-              className="gap-1.5 bg-gradient-to-r from-indigo-500 via-violet-500 to-pink-500 text-white border-0 shadow-md shadow-violet-500/25 hover:shadow-lg hover:shadow-violet-500/30 transition-all"
-            >
-              <Plus className="size-4" />
-              <span className="hidden sm:inline">New Task</span>
-              <span className="sm:hidden">New</span>
+            <Button onClick={() => setCreateOpen(true)}
+              className="gap-1.5 bg-zinc-800 text-zinc-100 hover:bg-zinc-700 border border-zinc-700/50 shrink-0">
+              <Plus className="size-4" /> New Task
             </Button>
           </div>
         </div>
-      </div>
 
-      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Stat tiles */}
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+          {statTiles.map((s) => (
+            <Card key={s.label} className="hover:shadow-md transition-all duration-200 hover:-translate-y-0.5">
+              <CardContent className="p-5">
+                {statsLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-3.5 w-20" />
+                    <Skeleton className="h-9 w-12" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                ) : (
+                  <div className="flex items-start justify-between">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-2">{s.label}</p>
+                      <p className="text-3xl font-bold text-foreground leading-none mb-1.5 tabular-nums">{s.value}</p>
+                      <p className="text-xs text-muted-foreground truncate">{s.sub}</p>
+                    </div>
+                    <div className={cn("p-2.5 rounded-xl shrink-0 ml-3", s.iconBg)}>
+                      <s.Icon className="h-5 w-5" />
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
 
-          {/* ── LEFT: Daily Planner ── */}
-          <div className="lg:col-span-2 space-y-4">
-            {/* Date navigation */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                className="size-8 shrink-0 rounded-xl"
-                onClick={() => handleDateNav("prev")}
-              >
-                <ArrowLeft className="size-4" />
-              </Button>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
 
-              <div className="flex-1 text-center">
-                <p className="text-sm font-semibold leading-tight">
-                  {formatDisplayDate(currentDate)}
+          {/* ── Sidebar ── (first in DOM = top on mobile) */}
+          <div className="space-y-4 lg:order-2">
+            <div>
+              <div className="flex items-center justify-between mb-2 px-1">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                  <Calendar className="size-3.5" /> Daily Planner
                 </p>
                 {isCurrToday && (
-                  <span className="text-xs font-medium text-violet-600 dark:text-violet-400">
+                  <span className="text-[10px] font-medium text-violet-600 dark:text-violet-400 bg-violet-500/10 rounded-full px-2 py-0.5">
                     Today
                   </span>
                 )}
               </div>
-
-              <Button
-                variant="outline"
-                size="icon"
-                className="size-8 shrink-0 rounded-xl"
-                onClick={() => handleDateNav("next")}
-              >
-                <ArrowRight className="size-4" />
-              </Button>
-
-              {!isCurrToday && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setCurrentDate(todayIso())}
-                  className="gap-1 text-xs px-2 h-8 shrink-0 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/30"
-                >
-                  <Calendar className="size-3" />
-                  Today
-                </Button>
-              )}
+              <TodayCard
+                tasks={dailyTasks}
+                loading={loadingDaily}
+                date={currentDate}
+                onDateNav={(dir) => setCurrentDate(navigateDate(currentDate, dir))}
+                onJumpToday={() => setCurrentDate(todayIso())}
+                onJumpTo={(d) => setCurrentDate(d)}
+                onComplete={handleCompleteTask}
+                onRefresh={refreshAll}
+                onAdd={() => setCreateOpen(true)}
+              />
             </div>
 
-            {/* Planned tasks */}
-            <Card className="rounded-2xl border border-border/70 bg-card/80 backdrop-blur-sm">
-              <CardHeader className="pb-2 pt-4 px-4 flex-row items-center justify-between">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Target className="size-3.5 text-violet-500" />
-                  Planned Tasks
-                  {!loadingDaily && dailyTasks.length > 0 && (
-                    <span className="text-muted-foreground font-normal">
-                      ({dailyTasks.length})
-                    </span>
+            <div>
+              <div className="flex items-center justify-between mb-2 px-1">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                  <Inbox className="size-3.5" /> Unplanned
+                  {inboxTasks.length > 0 && (
+                    <span className="text-foreground font-normal normal-case tracking-normal">({inboxTasks.length})</span>
                   )}
-                </CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={fetchDailyTasks}
-                  disabled={loadingDaily}
-                  className="h-7 text-xs gap-1"
-                >
-                  Refresh
+                </p>
+                <Button variant="ghost" size="sm" onClick={fetchInboxTasks} disabled={loadingInbox}
+                  className="h-6 text-[11px] gap-1 text-muted-foreground -mr-1">
+                  <RefreshCw className={cn("size-3", loadingInbox && "animate-spin")} />
                 </Button>
-              </CardHeader>
-              <CardContent className="px-4 pb-4 pt-0">
-                {loadingDaily ? (
-                  <div className="space-y-2">
-                    {[1, 2, 3].map((i) => <TaskRowSkeleton key={i} />)}
-                  </div>
-                ) : dailyTasks.length === 0 && overdueTasks.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
-                    <div className="flex size-12 items-center justify-center rounded-xl bg-muted/60">
-                      <Calendar className="size-5 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold">
-                        {isCurrToday ? "No tasks planned for today" : "No tasks on this day"}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {isCurrToday ? "Schedule a task to get started." : "Navigate or create a task."}
-                      </p>
-                    </div>
-                    <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
-                      <Plus className="size-3.5" />
-                      Add a Task
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {overdueTasks.length > 0 && (
-                      <div className="space-y-1.5">
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-destructive px-1 flex items-center gap-1">
-                          <AlertCircle className="size-3" />
-                          Past Due ({overdueTasks.length})
-                        </p>
-                        {overdueTasks.map((t) => (
-                          <TaskRow
-                            key={t.id}
-                            task={t}
-                            onComplete={openCompleteDialog}
-                            onRefresh={refreshAll}
-                          />
-                        ))}
-                        {dailyTasks.length > 0 && <Separator className="my-2" />}
-                      </div>
-                    )}
-
-                    {inProgressTasks.length > 0 && (
-                      <div className="space-y-1.5">
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400 px-1">
-                          In Progress ({inProgressTasks.length})
-                        </p>
-                        {inProgressTasks.map((t) => (
-                          <TaskRow key={t.id} task={t} onComplete={openCompleteDialog} onRefresh={refreshAll} />
-                        ))}
-                      </div>
-                    )}
-
-                    {pendingTasks.length > 0 && (
-                      <div className="space-y-1.5">
-                        {inProgressTasks.length > 0 && <Separator className="my-2" />}
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-1">
-                          Pending ({pendingTasks.length})
-                        </p>
-                        {pendingTasks.map((t) => (
-                          <TaskRow key={t.id} task={t} onComplete={openCompleteDialog} onRefresh={refreshAll} />
-                        ))}
-                      </div>
-                    )}
-
-                    {completedDailyTasks.length > 0 && (
-                      <div className="space-y-1.5">
-                        {(inProgressTasks.length > 0 || pendingTasks.length > 0) && (
-                          <Separator className="my-2" />
-                        )}
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 px-1 flex items-center gap-1">
-                          <CheckCircle2 className="size-3" />
-                          Completed ({completedDailyTasks.length})
-                        </p>
-                        {completedDailyTasks.map((t) => (
-                          <TaskRow key={t.id} task={t} onComplete={openCompleteDialog} onRefresh={refreshAll} />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+              </div>
+              <InboxCard
+                tasks={inboxTasks}
+                loading={loadingInbox}
+                date={unplannedDate}
+                onDateChange={(d) => setUnplannedDate(d)}
+                onClearDate={() => setUnplannedDate(null)}
+                onComplete={handleCompleteTask}
+                onRefresh={refreshAll}
+                onAdd={() => setCreateOpen(true)}
+              />
+            </div>
           </div>
 
-          {/* ── RIGHT: Sidebar ── */}
-          <div className="space-y-4">
-            {/* Day stats */}
-            <DayStats tasks={dailyTasks} date={currentDate} />
+          {/* ── Main task list ── */}
+          <div className="lg:col-span-2 space-y-4 lg:order-1">
 
-            {/* Inbox */}
-            <Card className="rounded-2xl border border-border/70 bg-card/80 backdrop-blur-sm">
-              <CardHeader className="pb-2 pt-4 px-4 flex-row items-center justify-between">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Inbox className="size-3.5 text-pink-500" />
-                  Inbox
-                  {!loadingInbox && inboxTasks.length > 0 && (
-                    <span className="text-muted-foreground font-normal">
-                      ({inboxTasks.length})
-                    </span>
-                  )}
-                </CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={fetchInboxTasks}
-                  disabled={loadingInbox}
-                  className="h-7 text-xs"
-                >
-                  Refresh
-                </Button>
-              </CardHeader>
-              <CardContent className="px-4 pb-4 pt-0">
-                {loadingInbox ? (
-                  <div className="space-y-2">
-                    {[1, 2].map((i) => <TaskRowSkeleton key={i} />)}
-                  </div>
-                ) : inboxTasks.length === 0 ? (
-                  <div className="flex flex-col items-center gap-2 py-8 text-center">
-                    <Sparkles className="size-5 text-pink-400" />
-                    <p className="text-xs text-muted-foreground">Inbox is clear!</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {inboxTasks.map((t) => (
-                      <TaskRow
-                        key={t.id}
-                        task={t}
-                        onComplete={openCompleteDialog}
-                        onRefresh={refreshAll}
-                        variant="inbox"
-                      />
-                    ))}
-                  </div>
+            {/* Filter bar */}
+            <div className="flex items-center gap-2 rounded-2xl border border-border/60 bg-card/70 px-3 py-2 backdrop-blur-sm">
+              <div className="scrollbar-none flex items-center gap-1 flex-1 overflow-x-auto min-w-0">
+                {!isSearchMode && STATUS_TABS.map((tab) => {
+                  const isActive = statusFilter === tab.key
+                  return (
+                    <button key={tab.key} onClick={() => setStatusFilter(tab.key)}
+                      className={cn(
+                        "flex items-center gap-1.5 h-7 pl-2.5 pr-3 rounded-lg border text-xs font-medium transition-all shrink-0",
+                        isActive
+                          ? "bg-violet-500/12 text-violet-700 dark:text-violet-300 border-violet-500/50"
+                          : "border-transparent bg-transparent text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                      )}>
+                      {tab.label}
+                      <span className={cn(
+                        "ml-0.5 rounded-full px-1.5 py-px text-[10px] leading-none font-normal tabular-nums",
+                        isActive ? "bg-black/10 dark:bg-white/15" : "bg-muted text-muted-foreground",
+                      )}>
+                        {tab.count ?? "—"}
+                      </span>
+                    </button>
+                  )
+                })}
+                {isSearchMode && (
+                  <span className="text-xs text-muted-foreground px-1 shrink-0">
+                    {searchLoading ? "Searching…" : `${totalCount} result${totalCount !== 1 ? "s" : ""} for "${searchInput.trim()}"`}
+                  </span>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+              {/* Search box */}
+              <div className="relative flex items-center shrink-0">
+                <Search className="absolute left-2.5 size-3.5 text-muted-foreground pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  placeholder="Search tasks…"
+                  className={cn(
+                    "h-7 rounded-lg border bg-transparent pl-8 pr-6 text-xs outline-none transition-all w-[130px] focus:w-[190px]",
+                    isSearchMode
+                      ? "border-violet-500/50 text-foreground"
+                      : "border-border/60 text-muted-foreground focus:border-violet-500/40 focus:text-foreground",
+                    "placeholder:text-muted-foreground/60",
+                  )}
+                />
+                {searchInput && (
+                  <button
+                    onClick={handleClearSearch}
+                    className="absolute right-1.5 flex size-4 items-center justify-center rounded-full bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                    aria-label="Clear search"
+                  >
+                    <X className="size-2.5" />
+                  </button>
+                )}
+              </div>
+              <div className="h-5 w-px bg-border/60 shrink-0" />
+              <Button variant="ghost" size="sm" onClick={() => { fetchStats(); fetchTaskList(1, false) }}
+                disabled={loadingList}
+                className="h-7 text-xs gap-1.5 text-muted-foreground shrink-0 px-2">
+                <RefreshCw className={cn("size-3.5", loadingList && "animate-spin")} />
+              </Button>
+            </div>
+
+            {/* Task list */}
+            {(loadingList || searchLoading) ? (
+              <div className="space-y-2">
+                {Array.from({ length: 6 }).map((_, i) => <TaskRowSkeleton key={i} />)}
+              </div>
+            ) : displayTasks.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 py-16 text-center rounded-2xl border border-border/50 bg-card/50">
+                <div className="flex size-14 items-center justify-center rounded-2xl bg-muted/60">
+                  <CheckSquare className="size-6 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">
+                    {isSearchMode ? `No results for "${searchInput.trim()}"` : statusFilter === "ALL" ? "No tasks yet" : `No ${statusFilter.replace("_", " ").toLowerCase()} tasks`}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {isSearchMode ? "Try a different search term." : statusFilter === "ALL" ? "Create a task to get started." : "Try a different filter."}
+                  </p>
+                </div>
+                {!isSearchMode && statusFilter === "ALL" && (
+                  <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
+                    <Plus className="size-3.5" /> New Task
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {displayTasks.map((task) => (
+                  <TaskRow
+                    key={task.id}
+                    task={task}
+                    onComplete={handleCompleteTask}
+                    onRefresh={refreshAll}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Load more */}
+            {!loadingList && hasMore && (
+              <div className="flex justify-center pt-1">
+                <button
+                  onClick={handleLoadMore}
+                  disabled={loadingMore}
+                  className={cn(
+                    "group flex items-center gap-2.5 rounded-2xl border border-border/60 bg-card/70 px-6 py-3 text-sm font-medium backdrop-blur-sm transition-all duration-200",
+                    "hover:border-violet-500/40 hover:bg-violet-500/5 hover:shadow-sm",
+                    loadingMore && "cursor-not-allowed opacity-60",
+                  )}
+                >
+                  {loadingMore ? (
+                    <>
+                      <span className="size-4 rounded-full border-2 border-violet-500/30 border-t-violet-500 animate-spin" />
+                      Loading…
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-muted-foreground group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
+                        Load {Math.min(PAGE_SIZE, totalCount - loadedCount)} more
+                      </span>
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground tabular-nums">
+                        {totalCount - loadedCount} remaining
+                      </span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+            {!loadingList && !hasMore && totalCount > PAGE_SIZE && (
+              <p className="text-center text-[11px] text-muted-foreground tabular-nums pt-1">
+                All {totalCount} tasks shown
+              </p>
+            )}
           </div>
+
         </div>
       </div>
 
-      {/* Dialogs */}
       <CreateTaskDialog
         open={createOpen}
         onClose={() => setCreateOpen(false)}
@@ -1069,17 +968,216 @@ export default function TasksPage() {
         onCreated={refreshAll}
       />
 
-      {completingTask && (
-        <CompleteTaskDialog
-          open={completeDialogOpen}
-          onClose={() => {
-            setCompleteDialogOpen(false)
-            setCompletingTask(null)
-          }}
-          task={completingTask}
-          onComplete={handleComplete}
-        />
-      )}
     </div>
   )
 }
+
+interface InboxCardProps {
+  tasks: Task[]
+  loading: boolean
+  date: string | null
+  onDateChange: (date: string) => void
+  onClearDate: () => void
+  onComplete: (task: Task) => void
+  onRefresh: () => void
+  onAdd: () => void
+}
+
+function InboxCard({ tasks, loading, date, onDateChange, onClearDate, onComplete, onRefresh, onAdd }: InboxCardProps) {
+  const dateInputRef = useRef<HTMLInputElement>(null)
+
+  // Group tasks by creation date (local date) — newest bucket first
+  const buckets = useMemo(() => {
+    const map = new Map<string, Task[]>()
+    for (const task of tasks) {
+      const d = new Date(task.createdAt)
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+      if (!map.has(iso)) map.set(iso, [])
+      map.get(iso)!.push(task)
+    }
+    return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]))
+  }, [tasks])
+
+  function bucketLabel(iso: string): string {
+    const today = todayIso()
+    if (iso === today) return "Today"
+    if (iso === navigateDate(today, "prev")) return "Yesterday"
+    return formatShortDate(iso)
+  }
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border/70 bg-card/70 backdrop-blur-sm">
+      <div className="flex items-center gap-1.5 px-3 py-2.5 border-b border-border/40">
+        <button
+          className="flex-1 flex items-center gap-1.5 min-w-0 group"
+          onClick={() => dateInputRef.current?.showPicker()}
+          title="Filter by creation date"
+        >
+          <Calendar className="size-3.5 shrink-0 text-muted-foreground group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors" />
+          <span className={cn(
+            "text-xs font-medium truncate transition-colors",
+            date ? "text-violet-700 dark:text-violet-300" : "text-muted-foreground group-hover:text-violet-600 dark:group-hover:text-violet-400"
+          )}>
+            {date ? formatDisplayDate(date) : "All dates"}
+          </span>
+          <input
+            ref={dateInputRef}
+            type="date"
+            value={date ?? ""}
+            onChange={(e) => e.target.value && onDateChange(e.target.value)}
+            className="sr-only"
+            tabIndex={-1}
+          />
+        </button>
+        {date && (
+          <button
+            onClick={onClearDate}
+            title="Clear date filter"
+            className="shrink-0 text-[10px] text-muted-foreground hover:text-foreground bg-muted/60 hover:bg-muted rounded px-1.5 py-0.5 transition-colors"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+      <div className="px-2 py-2 max-h-[360px] overflow-y-auto">
+        {loading ? (
+          <div className="space-y-1">{[1, 2].map((i) => <TaskRowSkeleton key={i} />)}</div>
+        ) : tasks.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 py-8 text-center">
+            <Sparkles className="size-5 text-pink-400" />
+            <p className="text-xs text-muted-foreground">No unplanned tasks!</p>
+            <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={onAdd}>
+              <Plus className="size-3" /> Add Task
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {buckets.map(([iso, bucketTasks]) => {
+              const active = bucketTasks.filter((t) => t.status !== "COMPLETED" && t.status !== "CANCELLED")
+              const done   = bucketTasks.filter((t) => t.status === "COMPLETED" || t.status === "CANCELLED")
+              return (
+                <div key={iso}>
+                  {/* Bucket date header */}
+                  <div className="flex items-center gap-2 px-1 mb-1.5">
+                    <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground shrink-0">
+                      {bucketLabel(iso)}
+                    </span>
+                    <div className="flex-1 h-px bg-border/40" />
+                    <span className="text-[10px] tabular-nums text-muted-foreground/60 shrink-0">
+                      {bucketTasks.length}
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    {active.map((t) => <TaskRow key={t.id} task={t} onComplete={onComplete} onRefresh={onRefresh} />)}
+                    {done.map((t) => <TaskRow key={t.id} task={t} onComplete={onComplete} onRefresh={onRefresh} />)}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+interface TodayCardProps {
+  tasks: Task[]
+  loading: boolean
+  date: string
+  onDateNav: (dir: "prev" | "next") => void
+  onJumpToday: () => void
+  onJumpTo: (date: string) => void
+  onComplete: (task: Task) => void
+  onRefresh: () => void
+  onAdd: () => void
+}
+
+function TodayCard({ tasks, loading, date, onDateNav, onJumpToday, onJumpTo, onComplete, onRefresh, onAdd }: TodayCardProps) {
+  const dateInputRef = useRef<HTMLInputElement>(null)
+  const completed = tasks.filter((t) => t.status === "COMPLETED").length
+  const inProg    = tasks.filter((t) => t.status === "IN_PROGRESS").length
+  const pending   = tasks.filter((t) => t.status === "PENDING").length
+  const pct       = tasks.length > 0 ? Math.round((completed / tasks.length) * 100) : 0
+  const isCurrToday = isToday(date)
+  const active = tasks.filter((t) => t.status !== "COMPLETED" && t.status !== "CANCELLED")
+  const done   = tasks.filter((t) => t.status === "COMPLETED")
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border/70 bg-card/70 backdrop-blur-sm">
+      <div className="flex items-center gap-1.5 px-3 py-3 border-b border-border/40">
+        <Button variant="ghost" size="icon" className="size-7 rounded-lg" onClick={() => onDateNav("prev")}>
+          <ArrowLeft className="size-3.5" />
+        </Button>
+        <button
+          className="flex-1 text-center group relative cursor-pointer rounded-lg py-0.5 hover:bg-muted/60 transition-colors"
+          onClick={() => dateInputRef.current?.showPicker()}
+          title="Pick a date"
+        >
+          <p className="text-xs font-semibold leading-tight group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
+            {formatDisplayDate(date)}
+          </p>
+          {isCurrToday && <span className="text-[10px] font-medium text-violet-600 dark:text-violet-400">Today</span>}
+          <input
+            ref={dateInputRef}
+            type="date"
+            value={date}
+            onChange={(e) => e.target.value && onJumpTo(e.target.value)}
+            className="sr-only"
+            tabIndex={-1}
+          />
+        </button>
+        <Button variant="ghost" size="icon" className="size-7 rounded-lg" onClick={() => onDateNav("next")}>
+          <ArrowRight className="size-3.5" />
+        </Button>
+        {!isCurrToday && (
+          <Button variant="ghost" size="icon" className="size-7 rounded-lg text-violet-600 dark:text-violet-400"
+            onClick={onJumpToday} title="Jump to today">
+            <Calendar className="size-3.5" />
+          </Button>
+        )}
+      </div>
+
+      {tasks.length > 0 && (
+        <div className="px-3 py-2 border-b border-border/40 space-y-1.5">
+          <div className="flex items-center justify-between text-[10px]">
+            <span className="text-muted-foreground">Completion</span>
+            <span className="font-semibold">{pct}%</span>
+          </div>
+          <Progress value={pct} className={cn("h-1",
+            pct >= 100 ? "[&>div]:bg-emerald-500" :
+            pct >= 50  ? "[&>div]:bg-violet-500"  : "[&>div]:bg-indigo-400"
+          )} />
+          <div className="flex items-center gap-3 text-[10px]">
+            <span className="text-emerald-600 dark:text-emerald-400 font-medium">{completed} done</span>
+            {inProg > 0 && <span className="text-violet-600 dark:text-violet-400 font-medium">{inProg} active</span>}
+            <span className="text-muted-foreground">{pending} pending</span>
+          </div>
+        </div>
+      )}
+
+      <div className="px-2 py-2 space-y-1 max-h-[340px] overflow-y-auto">
+        {loading ? (
+          [1, 2].map((i) => <TaskRowSkeleton key={i} />)
+        ) : tasks.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 py-6 text-center">
+            <Calendar className="size-5 text-muted-foreground/50" />
+            <p className="text-xs text-muted-foreground">
+              {isCurrToday ? "Nothing planned for today" : "No tasks on this day"}
+            </p>
+            <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={onAdd}>
+              <Plus className="size-3" /> Add Task
+            </Button>
+          </div>
+        ) : (
+          <>
+            {active.map((t) => <TaskRow key={t.id} task={t} onComplete={onComplete} onRefresh={onRefresh} />)}
+            {done.length > 0 && active.length > 0 && <Separator className="opacity-30 my-1" />}
+            {done.map((t) => <TaskRow key={t.id} task={t} onComplete={onComplete} onRefresh={onRefresh} />)}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+

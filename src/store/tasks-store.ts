@@ -19,7 +19,7 @@ export const useTasksStore = create<TasksState>((set) => ({
   tasks: [],
   loading: false,
   error: null,
-  currentDate: new Date().toISOString().split('T')[0],
+  currentDate: (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` })(),
 
   fetchTasks: async (filters) => {
     set({ loading: true, error: null })

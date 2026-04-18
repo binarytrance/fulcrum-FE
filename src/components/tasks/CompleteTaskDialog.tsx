@@ -25,14 +25,14 @@ type Props = {
 
 export function CompleteTaskDialog({ open, onClose, task, onComplete }: Props) {
   const [duration, setDuration] = useState<number | "">(
-    task.estimatedDuration ?? ""
+    task.estimatedDuration != null ? Math.round(task.estimatedDuration / 60000) : ""
   )
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) {
-      setDuration(task.estimatedDuration ?? "")
+      setDuration(task.estimatedDuration != null ? Math.round(task.estimatedDuration / 60000) : "")
       setError(null)
     }
   }, [open, task.estimatedDuration])
@@ -47,7 +47,7 @@ export function CompleteTaskDialog({ open, onClose, task, onComplete }: Props) {
     }
     setLoading(true)
     try {
-      await onComplete(minutes)
+      await onComplete(Math.round(minutes * 60 * 1000))
       onClose()
     } catch (err) {
       setError(
@@ -60,9 +60,10 @@ export function CompleteTaskDialog({ open, onClose, task, onComplete }: Props) {
     }
   }
 
+  const estimatedMinutes = task.estimatedDuration != null ? Math.round(task.estimatedDuration / 60000) : null
   const efficiency =
-    task.estimatedDuration && Number(duration) > 0
-      ? Math.round((task.estimatedDuration / Number(duration)) * 100)
+    estimatedMinutes && Number(duration) > 0
+      ? Math.round((estimatedMinutes / Number(duration)) * 100)
       : null
 
   return (
@@ -104,8 +105,8 @@ export function CompleteTaskDialog({ open, onClose, task, onComplete }: Props) {
               min={0}
               step={1}
               placeholder={
-                task.estimatedDuration
-                  ? `Estimated: ${task.estimatedDuration} min`
+                estimatedMinutes
+                  ? `Estimated: ${estimatedMinutes} min`
                   : "e.g. 30"
               }
               value={duration}

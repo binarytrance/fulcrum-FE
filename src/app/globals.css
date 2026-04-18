@@ -152,3 +152,34 @@
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
+
+/* ─── Global scrollbar styling ───────────────────────────────────────────────
+   Thin, rounded, violet-accented thumb that blends with the app palette.     */
+:root {
+  --scrollbar-thumb: oklch(0.75 0.12 280 / 0.45);
+  --scrollbar-thumb-hover: oklch(0.6 0.2 280 / 0.7);
+  --scrollbar-track: transparent;
+}
+.dark {
+  --scrollbar-thumb: oklch(0.5 0.15 280 / 0.4);
+  --scrollbar-thumb-hover: oklch(0.65 0.2 280 / 0.65);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}

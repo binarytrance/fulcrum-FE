@@ -31,7 +31,7 @@ export type AuthSession = {
 
 // ─── Goals ───────────────────────────────────────────────────────────────────
 
-export type GoalStatus = 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'ABANDONED';
+export type GoalStatus = 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'ABANDONED' | 'MISSED';
 
 export type GoalCategory =
   | 'CAREER'
@@ -48,12 +48,13 @@ export interface Goal {
   title: string;
   description?: string;
   status: GoalStatus;
+  isOverdue?: boolean;
   category: GoalCategory;
   priority: GoalPriority;
   deadline?: string;
+  estimatedEndDate?: string;
   estimatedHours?: number;
   parentGoalId?: string | null;
-  children?: Goal[];
   progress?: { score: number };
   isReadyToComplete?: boolean;
   createdAt: string;
@@ -66,6 +67,7 @@ export type CreateGoalDto = {
   category: GoalCategory;
   priority: GoalPriority;
   deadline?: string;
+  estimatedEndDate?: string;
   estimatedHours?: number;
   parentGoalId?: string;
 };
@@ -92,6 +94,7 @@ export interface Task {
   actualDuration?: number;
   efficiencyScore?: number;
   goalId?: string;
+  goalTitle?: string;
   createdAt: string;
   updatedAt: string;
 }

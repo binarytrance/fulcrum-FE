@@ -978,11 +978,11 @@ export default function HabitsPage() {
         <div className="relative mx-auto max-w-4xl px-4 py-8 sm:px-6">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-pink-500 shadow-md shadow-violet-500/20">
-                <Repeat className="size-6 text-white" />
+              <div className="flex size-12 items-center justify-center rounded-2xl border border-border/60 bg-card/90">
+                <Repeat className="size-6 text-violet-600 dark:text-violet-400" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 via-violet-400 to-pink-400 bg-clip-text text-transparent">
+                <h1 className="text-2xl font-bold tracking-tight text-foreground">
                   Habits
                 </h1>
                 <p className="text-sm text-muted-foreground">
@@ -996,7 +996,7 @@ export default function HabitsPage() {
                 setEditingHabit(null)
                 setFormOpen(true)
               }}
-              className="gap-1.5 bg-gradient-to-r from-indigo-500 via-violet-500 to-pink-500 text-white border-0 shadow-md shadow-violet-500/25 hover:shadow-lg hover:shadow-violet-500/30 transition-all"
+              className="gap-1.5 border border-border/60 bg-card text-foreground hover:bg-muted"
             >
               <Plus className="size-4" />
               <span className="hidden sm:inline">New Habit</span>
@@ -1090,8 +1090,8 @@ export default function HabitsPage() {
               </div>
             ) : todaysHabits.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
-                <div className="flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/10 via-violet-500/10 to-pink-500/10 border border-violet-500/20">
-                  <Sparkles className="size-7 text-violet-500" />
+                <div className="flex size-16 items-center justify-center rounded-2xl border border-border/60 bg-muted/40">
+                  <Sparkles className="size-7 text-muted-foreground" />
                 </div>
                 <div>
                   <p className="font-semibold text-base">No habits due today</p>
@@ -1100,11 +1100,12 @@ export default function HabitsPage() {
                   </p>
                 </div>
                 <Button
+                  variant="outline"
                   onClick={() => {
                     setEditingHabit(null)
                     setFormOpen(true)
                   }}
-                  className="gap-1.5 bg-gradient-to-r from-indigo-500 via-violet-500 to-pink-500 text-white border-0"
+                  className="gap-1.5"
                 >
                   <Plus className="size-4" />
                   Create First Habit
@@ -1136,7 +1137,7 @@ export default function HabitsPage() {
                   className={cn(
                     "px-3 py-1 text-xs font-medium rounded-full border transition-all",
                     allFilter === f
-                      ? "bg-violet-500 text-white border-violet-500 shadow-sm shadow-violet-500/25"
+                      ? "bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/30"
                       : "bg-muted/50 text-muted-foreground border-border hover:border-violet-400 hover:text-foreground"
                   )}
                 >
