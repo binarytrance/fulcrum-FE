@@ -123,7 +123,7 @@ type HabitItem = {
   title: string
   targetDuration: number
   occurrenceId?: string
-  occurrenceStatus?: "PENDING" | "COMPLETED" | "SKIPPED"
+  occurrenceStatus?: "pending" | "completed" | "skipped" | "missed"
 }
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
@@ -406,40 +406,40 @@ function TodayHabitCard({
   onComplete: (h: HabitItem) => void
   onSkip: (h: HabitItem) => void
 }) {
-  const status = habit.occurrenceStatus ?? "PENDING"
+  const status = habit.occurrenceStatus ?? "pending"
 
   return (
     <Card
       className={cn(
         "min-w-[175px] w-[175px] shrink-0 transition-all duration-200",
-        status === "COMPLETED" &&
+        status === "completed" &&
           "border-green-500/40 bg-green-500/[0.04] dark:bg-green-500/[0.06]",
-        status === "SKIPPED" && "opacity-55"
+        status === "skipped" && "opacity-55"
       )}
     >
       <CardContent className="p-4 flex flex-col gap-3 h-full">
         {/* Status icon + badge */}
         <div className="flex items-center justify-between">
-          {status === "COMPLETED" ? (
+          {status === "completed" ? (
             <CheckCircle className="h-4 w-4 text-green-500" />
-          ) : status === "SKIPPED" ? (
+          ) : status === "skipped" ? (
             <SkipForward className="h-4 w-4 text-muted-foreground" />
           ) : (
             <Circle className="h-4 w-4 text-muted-foreground" />
           )}
           <Badge
             variant={
-              status === "COMPLETED"
+              status === "completed"
                 ? "success"
-                : status === "SKIPPED"
+                : status === "skipped"
                 ? "outline"
                 : "secondary"
             }
             className="text-[10px] px-1.5 py-0"
           >
-            {status === "COMPLETED"
+            {status === "completed"
               ? "Done"
-              : status === "SKIPPED"
+              : status === "skipped"
               ? "Skipped"
               : "Pending"}
           </Badge>
@@ -450,7 +450,7 @@ function TodayHabitCard({
           <p
             className={cn(
               "text-sm font-semibold leading-snug",
-              status === "SKIPPED" && "line-through text-muted-foreground"
+              status === "skipped" && "line-through text-muted-foreground"
             )}
           >
             {habit.title}
@@ -461,7 +461,7 @@ function TodayHabitCard({
         </div>
 
         {/* Actions */}
-        {status === "PENDING" && habit.occurrenceId && (
+        {status === "pending" && habit.occurrenceId && (
           <div className="flex gap-1.5">
             <Button
               size="sm"
@@ -631,16 +631,16 @@ export default function DashboardPage() {
     const sorted = [...dailyRange].sort((a, b) => b.date.localeCompare(a.date))
     let streak = 0
     for (const day of sorted) {
-      if (day.totalFocusMinutes > 0 || day.completedHabits > 0) streak++
+      if (day.totalLoggedMinutes > 0) streak++
       else break
     }
     return streak
   }, [dailyRange])
 
   // Dashboard stats
-  const totalFocusMins = dashboard?.daily?.totalFocusMinutes ?? 0
-  const completedTasks = dashboard?.daily?.completedTasks ?? 0
-  const completedHabits = dashboard?.daily?.completedHabits ?? 0
+  const totalFocusMins = dashboard?.daily?.totalLoggedMinutes ?? 0
+  const completedTasks = tasks.filter((t) => t.status === "COMPLETED").length
+  const completedHabits = todaysHabits.filter((h) => h.occurrenceStatus === "completed").length
   const totalTasks = tasks.length
   const totalHabits = todaysHabits.length
   const timeLeaks = dashboard?.daily?.timeLeaks ?? []
@@ -1045,16 +1045,16 @@ export default function DashboardPage() {
                   {[
                     {
                       label: "Total focus",
-                      value: formatMinutes(dashboard.weekly.totalFocusMinutes),
+                      value: formatMinutes(dashboard.weekly.totalLoggedMinutes),
                     },
                     {
                       label: "Tasks completed",
-                      value: String(dashboard.weekly.completedTasks),
+                      value: String(dashboard.weekly.totalCompletedTasks),
                     },
                     {
                       label: "Daily average",
                       value: formatMinutes(
-                        Math.round(dashboard.weekly.avgDailyFocus)
+                        Math.round(dashboard.weekly.avgDailyMinutes)
                       ),
                     },
                     ...(dashboard.weekly.bestDay
@@ -1062,8 +1062,7 @@ export default function DashboardPage() {
                           {
                             label: "Best day",
                             value:
-                              dashboard.weekly.bestDay.charAt(0).toUpperCase() +
-                              dashboard.weekly.bestDay.slice(1).toLowerCase(),
+                              new Date(dashboard.weekly.bestDay.date + "T00:00:00").toLocaleDateString("en-US", { weekday: "long" }),
                           },
                         ]
                       : []),
@@ -1106,7 +1105,7 @@ export default function DashboardPage() {
                 <CardContent className="pb-5">
                   <div className="flex items-end gap-2.5 mb-1.5">
                     <span className="text-4xl font-bold tabular-nums">
-                      {Math.round(dashboard.estimation.rollingAverage)}%
+                      {dashboard.estimation.rollingAverage != null ? `${Math.min(100, Math.round(dashboard.estimation.rollingAverage))}%` : "—"}
                     </span>
                     <Badge
                       variant={
@@ -1122,8 +1121,8 @@ export default function DashboardPage() {
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Based on {dashboard.estimation.sampleCount} session
-                    {dashboard.estimation.sampleCount !== 1 ? "s" : ""}
+                    Based on {dashboard.estimation.recentAccuracies.length} sample
+                    {dashboard.estimation.recentAccuracies.length !== 1 ? "s" : ""}
                   </p>
                 </CardContent>
               </Card>

@@ -9,10 +9,12 @@ import {
   ArrowLeft,
   ArrowRight,
   Calendar,
+  ChevronDown,
   Clock,
   Plus,
   Play,
   Pause,
+  Target,
   Trash2,
   Timer,
   Inbox,
@@ -23,6 +25,8 @@ import {
   RefreshCw,
   X,
   Search,
+  Edit2,
+  Eye,
 } from "lucide-react"
 import type { Task, GoalPriority, TaskStatus } from "@/types"
 import { getTasks, getPaginatedTasks, getTaskStats, searchTasks } from "@/lib/tasks-api"
@@ -41,7 +45,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog"
 import {
@@ -70,6 +73,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
+import { EditTaskDialog } from "@/components/tasks/EditTaskDialog"
+import { TaskDetailDialog } from "@/components/tasks/TaskDetailDialog"
 
 // --- Constants ---
 
@@ -137,16 +142,22 @@ function navigateDate(iso: string, dir: "prev" | "next"): string {
 }
 
 function formatDuration(ms: number): string {
-  const minutes = Math.round(ms / 60000)
-  if (minutes < 60) return `${minutes}m`
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
-  return m > 0 ? `${h}h ${m}m` : `${h}h`
+  const totalSec = Math.round(ms / 1000)
+  const h = Math.floor(totalSec / 3600)
+  const m = Math.floor((totalSec % 3600) / 60)
+  const s = totalSec % 60
+  if (h > 0) return s > 0 ? `${h}h ${m}m ${s}s` : m > 0 ? `${h}h ${m}m` : `${h}h`
+  return s > 0 ? `${m}m ${s}s` : `${m}m`
+}
+
+function computeAccuracy(est?: number, act?: number): number | null {
+  if (!est || est <= 0 || !act || act <= 0) return null
+  return Math.min(100, Math.round((Math.min(est, act) / Math.max(est, act)) * 100))
 }
 
 // --- Goal Combobox ---
 
-interface GoalOption { id: string; title: string }
+interface GoalOption { id: string; title: string; status?: string }
 
 function GoalCombobox({ value, onChange }: { value: string; onChange: (id: string) => void }) {
   const [open, setOpen] = useState(false)
@@ -156,12 +167,13 @@ function GoalCombobox({ value, onChange }: { value: string; onChange: (id: strin
   const [selected, setSelected] = useState<GoalOption | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const loadInitial = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await getGoals({ status: "ACTIVE", limit: 10, page: 1 })
-      setOptions(res.items.map((g) => ({ id: g.id, title: g.title })))
+      const res = await getGoals({ status: "ACTIVE", limit: 12, page: 1 })
+      setOptions(res.items.map((g) => ({ id: g.id, title: g.title, status: g.status })))
     } catch { /* silent */ } finally { setLoading(false) }
   }, [])
 
@@ -172,8 +184,8 @@ function GoalCombobox({ value, onChange }: { value: string; onChange: (id: strin
     debounceRef.current = setTimeout(async () => {
       setLoading(true)
       try {
-        const res = await searchGoals(q.trim(), { limit: 10 })
-        setOptions(res.items.map((g) => ({ id: g.id, title: g.title })))
+        const res = await searchGoals(q.trim(), { limit: 12 })
+        setOptions(res.items.map((g) => ({ id: g.id, title: g.title, status: g.status })))
       } catch { /* silent */ } finally { setLoading(false) }
     }, 300)
   }
@@ -182,6 +194,7 @@ function GoalCombobox({ value, onChange }: { value: string; onChange: (id: strin
     setOpen(true)
     setQuery("")
     loadInitial()
+    setTimeout(() => inputRef.current?.focus(), 50)
   }
 
   const handleSelect = (goal: GoalOption | null) => {
@@ -211,68 +224,116 @@ function GoalCombobox({ value, onChange }: { value: string; onChange: (id: strin
 
   return (
     <div ref={containerRef} className="relative">
+      {/* Trigger */}
       <button
         type="button"
         onClick={handleOpen}
         className={cn(
-          "flex h-9 w-full items-center justify-between rounded-md border bg-transparent px-3 py-2 text-sm ring-offset-background",
-          "border-input placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-          "disabled:cursor-not-allowed disabled:opacity-50",
-          !selected && "text-muted-foreground",
+          "group flex h-10 w-full items-center gap-3 rounded-xl border px-3.5 py-2 text-sm transition-all",
+          "border-input bg-background/60 hover:bg-accent/30 hover:border-violet-400/60",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          open && "border-violet-500/60 bg-accent/30 ring-2 ring-violet-500/20",
         )}
       >
-        <span className="truncate">{selected ? selected.title : "No goal"}</span>
-        <Search className="size-3.5 shrink-0 text-muted-foreground ml-2" />
+        <div className={cn(
+          "flex size-6 shrink-0 items-center justify-center rounded-lg transition-colors",
+          selected ? "bg-violet-500/15 text-violet-600 dark:text-violet-400" : "bg-muted text-muted-foreground",
+        )}>
+          <Target className="size-3.5" />
+        </div>
+        <span className={cn("flex-1 truncate text-left", !selected && "text-muted-foreground")}>
+          {selected ? selected.title : "No goal linked"}
+        </span>
+        {selected && (
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={(e) => { e.stopPropagation(); handleSelect(null) }}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.stopPropagation(); handleSelect(null); } }}
+            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+          >
+            <X className="size-3.5" />
+          </span>
+        )}
+        {!selected && <ChevronDown className="size-3.5 shrink-0 text-muted-foreground transition-transform group-hover:text-foreground" />}
       </button>
 
+      {/* Dropdown */}
       {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-md">
-          <div className="flex items-center border-b border-border px-3 py-2 gap-2">
+        <div className="absolute z-50 mt-2 w-full overflow-hidden rounded-xl border border-border/80 bg-popover shadow-xl shadow-black/10 ring-1 ring-border/20">
+          {/* Search input */}
+          <div className="flex items-center gap-2.5 border-b border-border/60 px-3.5 py-3">
             <Search className="size-3.5 shrink-0 text-muted-foreground" />
             <input
-              autoFocus
+              ref={inputRef}
               value={query}
               onChange={(e) => handleSearch(e.target.value)}
               placeholder="Search goals…"
               className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
             {loading && (
-              <span className="size-3.5 rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground animate-spin shrink-0" />
+              <span className="size-3.5 shrink-0 rounded-full border-2 border-violet-500/30 border-t-violet-500 animate-spin" />
             )}
           </div>
 
-          <div className="max-h-48 overflow-y-auto py-1">
+          <div className="max-h-56 overflow-y-auto py-1.5">
+            {/* No goal option */}
             <button
               type="button"
               onClick={() => handleSelect(null)}
               className={cn(
-                "flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground",
-                !selected && "font-medium",
+                "flex w-full items-center gap-3 px-3.5 py-2.5 text-sm transition-colors hover:bg-accent",
+                !selected ? "text-foreground" : "text-muted-foreground",
               )}
             >
-              No goal
+              <div className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-muted">
+                <X className="size-3.5 text-muted-foreground" />
+              </div>
+              <span>No goal</span>
             </button>
 
             {options.length === 0 && !loading && (
-              <p className="px-3 py-2 text-xs text-muted-foreground">
-                {query ? "No goals found" : "No active goals"}
+              <p className="px-3.5 py-3 text-xs text-muted-foreground">
+                {query ? "No goals found for that search." : "No active goals found."}
               </p>
             )}
 
-            {options.map((g) => (
-              <button
-                key={g.id}
-                type="button"
-                onClick={() => handleSelect(g)}
-                className={cn(
-                  "flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground text-left",
-                  selected?.id === g.id && "font-medium text-violet-600 dark:text-violet-400",
-                )}
-              >
-                <span className="truncate">{g.title}</span>
-              </button>
-            ))}
+            {options.map((g) => {
+              const isSelected = selected?.id === g.id
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => handleSelect(g)}
+                  className={cn(
+                    "flex w-full items-center gap-3 px-3.5 py-2.5 text-sm transition-colors hover:bg-accent",
+                    isSelected && "bg-violet-500/8",
+                  )}
+                >
+                  <div className={cn(
+                    "flex size-6 shrink-0 items-center justify-center rounded-lg transition-colors",
+                    isSelected ? "bg-violet-500/20 text-violet-600 dark:text-violet-400" : "bg-muted text-muted-foreground",
+                  )}>
+                    <Target className="size-3.5" />
+                  </div>
+                  <span className={cn("flex-1 truncate text-left", isSelected && "font-medium text-violet-700 dark:text-violet-300")}>
+                    {g.title}
+                  </span>
+                  {isSelected && (
+                    <CheckCircle2 className="size-3.5 shrink-0 text-violet-500" />
+                  )}
+                </button>
+              )
+            })}
           </div>
+
+          {options.length > 0 && (
+            <div className="border-t border-border/60 px-3.5 py-2">
+              <p className="text-[10px] text-muted-foreground">
+                {query ? `${options.length} result${options.length !== 1 ? "s" : ""}` : "Showing active goals"}
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -336,38 +397,62 @@ function CreateTaskDialog({ open, onClose, defaultDate, onCreated }: CreateTaskD
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && !submitting && onClose()}>
-      <DialogContent className="max-w-lg max-h-[92vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <div className="flex size-7 items-center justify-center rounded-full bg-violet-500/15">
-              <Plus className="size-4 text-violet-600 dark:text-violet-400" />
+      <DialogContent className="max-w-xl max-h-[94vh] overflow-y-auto">
+        <DialogHeader className="pb-1">
+          <DialogTitle className="flex items-center gap-3 text-lg">
+            <div className="flex size-9 items-center justify-center rounded-xl bg-violet-500/15 border border-violet-500/20">
+              <Plus className="size-5 text-violet-600 dark:text-violet-400" />
             </div>
-            New Task
+            <div>
+              New Task
+              <p className="text-sm font-normal text-muted-foreground mt-0.5">Add a task to your planner or inbox.</p>
+            </div>
           </DialogTitle>
-          <DialogDescription>Add a task to your planner or inbox.</DialogDescription>
         </DialogHeader>
+
+        <div className="h-px bg-border/60 -mx-6" />
+
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-1">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 pt-1">
+            {/* Title */}
             <FormField control={form.control} name="title" render={({ field }) => (
               <FormItem>
-                <FormLabel>Title <span className="text-destructive">*</span></FormLabel>
-                <FormControl><Input placeholder="e.g. Review pull request" autoFocus {...field} /></FormControl>
+                <FormLabel className="text-sm font-medium">Title <span className="text-destructive">*</span></FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="e.g. Review pull request"
+                    autoFocus
+                    className="h-10 text-sm"
+                    {...field}
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )} />
+
+            {/* Description */}
             <FormField control={form.control} name="description" render={({ field }) => (
               <FormItem>
-                <FormLabel>Description</FormLabel>
-                <FormControl><Textarea placeholder="Any extra context..." rows={2} className="resize-none" {...field} /></FormControl>
+                <FormLabel className="text-sm font-medium">Description</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder="Any extra context or notes about this task…"
+                    rows={3}
+                    className="resize-none text-sm leading-relaxed"
+                    {...field}
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )} />
-            <div className="grid grid-cols-2 gap-3">
+
+            {/* Type + Priority */}
+            <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="type" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Type <span className="text-destructive">*</span></FormLabel>
+                  <FormLabel className="text-sm font-medium">Type <span className="text-destructive">*</span></FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                    <FormControl><SelectTrigger className="h-10"><SelectValue /></SelectTrigger></FormControl>
                     <SelectContent>
                       <SelectItem value="PLANNED">Planned</SelectItem>
                       <SelectItem value="UNPLANNED">Unplanned</SelectItem>
@@ -378,9 +463,9 @@ function CreateTaskDialog({ open, onClose, defaultDate, onCreated }: CreateTaskD
               )} />
               <FormField control={form.control} name="priority" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Priority <span className="text-destructive">*</span></FormLabel>
+                  <FormLabel className="text-sm font-medium">Priority <span className="text-destructive">*</span></FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                    <FormControl><SelectTrigger className="h-10"><SelectValue /></SelectTrigger></FormControl>
                     <SelectContent>
                       {PRIORITIES.map((p) => (
                         <SelectItem key={p} value={p}>{p.charAt(0) + p.slice(1).toLowerCase()}</SelectItem>
@@ -391,41 +476,63 @@ function CreateTaskDialog({ open, onClose, defaultDate, onCreated }: CreateTaskD
                 </FormItem>
               )} />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+
+            {/* Scheduled For + Duration */}
+            <div className="grid grid-cols-2 gap-4">
               {taskType === "PLANNED" && (
                 <FormField control={form.control} name="scheduledFor" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Scheduled For</FormLabel>
-                    <FormControl><Input type="date" {...field} /></FormControl>
+                    <FormLabel className="text-sm font-medium">Scheduled For</FormLabel>
+                    <FormControl><Input type="date" className="h-10" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
               )}
               <FormField control={form.control} name="estimatedDuration" render={({ field }) => (
                 <FormItem className={taskType === "UNPLANNED" ? "col-span-2" : ""}>
-                  <FormLabel>Est. Duration (min)</FormLabel>
+                  <FormLabel className="text-sm font-medium">Est. Duration (min)</FormLabel>
                   <FormControl>
-                    <Input type="number" min={1} step={1} placeholder="e.g. 30"
+                    <Input
+                      type="number" min={1} step={1} placeholder="e.g. 30" className="h-10"
                       value={field.value ?? ""}
-                      onChange={(e) => field.onChange(e.target.value === "" ? undefined : parseInt(e.target.value, 10))} />
+                      onChange={(e) => field.onChange(e.target.value === "" ? undefined : parseInt(e.target.value, 10))}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
             </div>
-            <FormField control={form.control} name="goalId" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Link to Goal</FormLabel>
-                <FormControl>
-                  <GoalCombobox value={field.value || "none"} onChange={field.onChange} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            <DialogFooter className="pt-2 gap-2 sm:gap-0">
-              <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>Cancel</Button>
-              <Button type="submit" disabled={submitting}>
-                {submitting ? "Creating..." : "Create Task"}
+
+            {/* Link to Goal */}
+            <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-2">
+              <FormField control={form.control} name="goalId" render={({ field }) => (
+                <FormItem className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Target className="size-3.5 text-muted-foreground" />
+                    <FormLabel className="text-sm font-medium">Link to Goal</FormLabel>
+                    <span className="text-[10px] text-muted-foreground bg-muted rounded-full px-1.5 py-0.5">optional</span>
+                  </div>
+                  <FormControl>
+                    <GoalCombobox value={field.value || "none"} onChange={field.onChange} />
+                  </FormControl>
+                  <p className="text-[11px] text-muted-foreground">Associate this task with an active goal to track progress.</p>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
+
+            <div className="h-px bg-border/60 -mx-6" />
+
+            <DialogFooter className="gap-2 sm:gap-2">
+              <Button type="button" variant="outline" onClick={onClose} disabled={submitting} className="flex-1 sm:flex-none">
+                Cancel
+              </Button>
+              <Button type="submit" disabled={submitting} className="flex-1 sm:flex-none gap-1.5">
+                {submitting ? (
+                  <><span className="size-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" /> Creating…</>
+                ) : (
+                  <><Plus className="size-4" /> Create Task</>
+                )}
               </Button>
             </DialogFooter>
           </form>
@@ -441,9 +548,11 @@ interface TaskRowProps {
   task: Task
   onComplete: (task: Task) => void
   onRefresh: () => void
+  onEdit: (task: Task) => void
+  onView: (task: Task) => void
 }
 
-function TaskRow({ task, onComplete, onRefresh }: TaskRowProps) {
+function TaskRow({ task, onComplete, onRefresh, onEdit, onView }: TaskRowProps) {
   const { updateTask, deleteTask } = useTasksStore()
   const [actionLoading, setActionLoading] = useState(false)
 
@@ -530,13 +639,16 @@ function TaskRow({ task, onComplete, onRefresh }: TaskRowProps) {
               <CheckCircle2 className="size-2.5" />{formatDuration(task.actualDuration)} actual
             </span>
           )}
-          {task.efficiencyScore != null && (
-            <span className={cn("text-[10px] font-semibold",
-              task.efficiencyScore >= 100 ? "text-emerald-600" :
-              task.efficiencyScore >= 75  ? "text-amber-600" : "text-red-500")}>
-              {task.efficiencyScore}%
-            </span>
-          )}
+          {(() => {
+            const acc = computeAccuracy(task.estimatedDuration, task.actualDuration)
+            return acc != null ? (
+              <span className={cn("text-[10px] font-semibold",
+                acc >= 90 ? "text-emerald-600" :
+                acc >= 70 ? "text-amber-600" : "text-red-500")}>
+                {acc}%
+              </span>
+            ) : null
+          })()}
           {task.goalTitle && task.goalId && (
             <Link
               href={`/goals/${task.goalId}`}
@@ -609,6 +721,13 @@ function TaskRow({ task, onComplete, onRefresh }: TaskRowProps) {
                 <Link href={`/timer/${task.id}`}><Timer className="size-3.5" /> Open Timer</Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => onView(task)}>
+                <Eye className="size-3.5" /> View Details
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onEdit(task)}>
+                <Edit2 className="size-3.5" /> Edit
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem destructive onClick={() => handleAction("delete")}>
                 <Trash2 className="size-3.5" /> Delete
               </DropdownMenuItem>
@@ -647,9 +766,11 @@ interface TodayCardProps {
   onComplete: (task: Task) => void
   onRefresh: () => void
   onAdd: () => void
+  onEdit: (task: Task) => void
+  onView: (task: Task) => void
 }
 
-function TodayCard({ tasks, loading, date, onDateNav, onJumpToday, onJumpTo, onComplete, onRefresh, onAdd }: TodayCardProps) {
+function TodayCard({ tasks, loading, date, onDateNav, onJumpToday, onJumpTo, onComplete, onRefresh, onAdd, onEdit, onView }: TodayCardProps) {
   const dateInputRef = useRef<HTMLInputElement>(null)
   const completed = tasks.filter((t) => t.status === "COMPLETED").length
   const inProg    = tasks.filter((t) => t.status === "IN_PROGRESS").length
@@ -727,9 +848,9 @@ function TodayCard({ tasks, loading, date, onDateNav, onJumpToday, onJumpTo, onC
           </div>
         ) : (
           <>
-            {active.map((t) => <TaskRow key={t.id} task={t} onComplete={onComplete} onRefresh={onRefresh} />)}
+            {active.map((t) => <TaskRow key={t.id} task={t} onComplete={onComplete} onRefresh={onRefresh} onEdit={onEdit} onView={onView} />)}
             {done.length > 0 && active.length > 0 && <Separator className="opacity-30 my-1" />}
-            {done.map((t) => <TaskRow key={t.id} task={t} onComplete={onComplete} onRefresh={onRefresh} />)}
+            {done.map((t) => <TaskRow key={t.id} task={t} onComplete={onComplete} onRefresh={onRefresh} onEdit={onEdit} onView={onView} />)}
           </>
         )}
       </div>
@@ -748,9 +869,11 @@ interface InboxCardProps {
   onComplete: (task: Task) => void
   onRefresh: () => void
   onAdd: () => void
+  onEdit: (task: Task) => void
+  onView: (task: Task) => void
 }
 
-function InboxCard({ tasks, loading, date, onDateChange, onClearDate, onComplete, onRefresh, onAdd }: InboxCardProps) {
+function InboxCard({ tasks, loading, date, onDateChange, onClearDate, onComplete, onRefresh, onAdd, onEdit, onView }: InboxCardProps) {
   const dateInputRef = useRef<HTMLInputElement>(null)
   const active = tasks.filter((t) => t.status !== "COMPLETED" && t.status !== "CANCELLED")
   const done   = tasks.filter((t) => t.status === "COMPLETED")
@@ -802,9 +925,9 @@ function InboxCard({ tasks, loading, date, onDateChange, onClearDate, onComplete
           </div>
         ) : (
           <>
-            {active.map((t) => <TaskRow key={t.id} task={t} onComplete={onComplete} onRefresh={onRefresh} />)}
+            {active.map((t) => <TaskRow key={t.id} task={t} onComplete={onComplete} onRefresh={onRefresh} onEdit={onEdit} onView={onView} />)}
             {done.length > 0 && active.length > 0 && <Separator className="opacity-30 my-1" />}
-            {done.map((t) => <TaskRow key={t.id} task={t} onComplete={onComplete} onRefresh={onRefresh} />)}
+            {done.map((t) => <TaskRow key={t.id} task={t} onComplete={onComplete} onRefresh={onRefresh} onEdit={onEdit} onView={onView} />)}
           </>
         )}
       </div>
@@ -835,6 +958,8 @@ export default function TasksPage() {
 
   const [statusFilter,  setStatusFilter]  = useState<StatusFilter>("ALL")
   const [createOpen,    setCreateOpen]    = useState(false)
+  const [editingTask,   setEditingTask]   = useState<Task | null>(null)
+  const [viewingTask,   setViewingTask]   = useState<Task | null>(null)
 
   const [searchInput,      setSearchInput]      = useState("")
   const [searchResults,    setSearchResults]    = useState<Task[]>([])
@@ -988,66 +1113,112 @@ export default function TasksPage() {
   ]
 
   return (
-    <div className="flex h-full flex-col gap-6 p-4 md:p-6 overflow-x-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight">
-            <CheckSquare className="size-5 text-violet-600 dark:text-violet-400" />
-            Tasks
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Manage your tasks and daily planner</p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Button variant="ghost" size="icon" className="size-9" onClick={refreshAll} title="Refresh">
-            <RefreshCw className="size-4" />
-          </Button>
-          <Button size="sm" className="gap-1.5 h-9" onClick={() => setCreateOpen(true)}>
-            <Plus className="size-4" />
-            <span className="hidden sm:inline">New Task</span>
-          </Button>
-        </div>
-      </div>
+    <div className="relative min-h-screen overflow-x-clip bg-background">
+      {/* Background blobs */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-24 left-1/2 h-[480px] w-[600px] -translate-x-1/2 rounded-full opacity-25 blur-3xl"
+        style={{ background: "radial-gradient(circle, oklch(0.6 0.25 280) 0%, transparent 65%)" }}
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute right-[-8rem] top-[30%] h-80 w-80 rounded-full opacity-20 blur-3xl"
+        style={{ background: "radial-gradient(circle, oklch(0.65 0.22 320) 0%, transparent 65%)" }}
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-0 left-[-4rem] h-[350px] w-[350px] rounded-full opacity-15 blur-3xl"
+        style={{ background: "radial-gradient(circle, oklch(0.7 0.18 240) 0%, transparent 65%)" }}
+      />
 
-      {/* Stat tiles */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {statTiles.map((tile) => (
-          <Card key={tile.label} className="border-border/50 shadow-none">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-xs text-muted-foreground font-medium">{tile.label}</p>
-                <div className={cn("flex size-7 items-center justify-center rounded-lg", tile.iconBg)}>
-                  <tile.Icon className="size-3.5" />
-                </div>
+      <div className="relative mx-auto max-w-7xl space-y-6 px-4 py-6 sm:space-y-8 sm:px-6 sm:py-8 lg:px-8">
+        {/* Hero card */}
+        <div className="relative overflow-hidden rounded-3xl border border-border/70 bg-card/70 p-5 backdrop-blur-sm sm:p-7">
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 opacity-60 pointer-events-none"
+            style={{
+              background:
+                "linear-gradient(130deg, rgba(129,140,248,0.18) 0%, rgba(192,132,252,0.12) 48%, rgba(244,114,182,0.18) 100%)",
+            }}
+          />
+          <div className="relative flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-violet-500/25 bg-violet-500/10">
+                <CheckSquare className="size-5 text-violet-600 dark:text-violet-400" />
               </div>
-              <div className="mt-2">
-                {statsLoading
-                  ? <Skeleton className="h-7 w-12" />
-                  : <p className="text-2xl font-bold">{tile.value}</p>
-                }
-                <p className="text-[11px] text-muted-foreground mt-0.5">{tile.sub}</p>
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight text-foreground leading-none">
+                  Tasks
+                </h1>
+                <p className="mt-1.5 text-sm text-muted-foreground">
+                  Manage your tasks and daily planner
+                </p>
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button variant="ghost" size="icon" className="size-9 text-muted-foreground hover:text-foreground" onClick={refreshAll} title="Refresh">
+                <RefreshCw className="size-4" />
+              </Button>
+              <Button
+                onClick={() => setCreateOpen(true)}
+                className="gap-1.5 bg-zinc-800 text-zinc-100 hover:bg-zinc-700 border border-zinc-700/50"
+              >
+                <Plus className="size-4" />
+                <span className="hidden sm:inline">New Task</span>
+              </Button>
+            </div>
+          </div>
+        </div>
 
-      {/* Main grid */}
-      <div className="grid gap-4 xl:grid-cols-[1fr_288px]">
-        {/* Left: task list */}
-        <div className="flex flex-col gap-3 min-w-0">
-          {/* Filter bar */}
-          <div className="flex flex-col gap-2 rounded-2xl border border-border/60 bg-card/70 px-3 py-2.5 backdrop-blur-sm sm:flex-row sm:items-center sm:py-2">
-            {/* Status pills — left side */}
-            <div className="scrollbar-none flex items-center gap-1 flex-1 overflow-x-auto min-w-0 sm:order-first">
-              {STATUS_TABS.map((tab) => {
-                const isActive = statusFilter === tab.key
-                return (
-                  <button
-                    key={tab.key}
-                    onClick={() => setStatusFilter(tab.key)}
-                    className={cn(
-                      "flex items-center gap-1.5 h-7 pl-2.5 pr-3 rounded-lg border text-xs font-medium transition-all shrink-0",
+        {/* Stat tiles */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:gap-4">
+          {statTiles.map((tile) => (
+            <Card key={tile.label} className="hover:shadow-md transition-all duration-200 hover:-translate-y-0.5">
+              <CardContent className="p-5">
+                {statsLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-3.5 w-28" />
+                    <Skeleton className="h-9 w-16" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                ) : (
+                  <div className="flex items-start justify-between">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-2">
+                        {tile.label}
+                      </p>
+                      <p className="text-3xl font-bold tabular-nums leading-none">
+                        {tile.value.toLocaleString()}
+                      </p>
+                      <p className="mt-1.5 text-xs text-muted-foreground">{tile.sub}</p>
+                    </div>
+                    <div className={cn("flex size-9 shrink-0 items-center justify-center rounded-xl", tile.iconBg)}>
+                      <tile.Icon className="size-4" />
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Main grid */}
+        <div className="grid gap-4 xl:grid-cols-[1fr_380px]">
+          {/* Left: task list */}
+          <div className="flex flex-col gap-3 min-w-0">
+            {/* Filter bar */}
+            <div className="flex flex-col gap-2 rounded-2xl border border-border/60 bg-card/70 px-3 py-2.5 backdrop-blur-sm sm:flex-row sm:items-center sm:py-2">
+              {/* Status pills — left side */}
+              <div className="scrollbar-none flex items-center gap-1 flex-1 overflow-x-auto min-w-0 sm:order-first">
+                {STATUS_TABS.map((tab) => {
+                  const isActive = statusFilter === tab.key
+                  return (
+                    <button
+                      key={tab.key}
+                      onClick={() => setStatusFilter(tab.key)}
+                      className={cn(
+                        "flex items-center gap-1.5 h-7 pl-2.5 pr-3 rounded-lg border text-xs font-medium transition-all shrink-0",
                       isActive
                         ? cn(tab.activeBg, tab.activeText, tab.activeBorder)
                         : "border-transparent bg-transparent text-muted-foreground hover:bg-muted/60 hover:text-foreground",
@@ -1126,7 +1297,7 @@ export default function TasksPage() {
             ) : (
               <>
                 {displayTasks.map((t) => (
-                  <TaskRow key={t.id} task={t} onComplete={handleCompleteTask} onRefresh={refreshAll} />
+                  <TaskRow key={t.id} task={t} onComplete={handleCompleteTask} onRefresh={refreshAll} onEdit={setEditingTask} onView={setViewingTask} />
                 ))}
                 {hasMore && (
                   <div className="flex flex-col items-center gap-2 py-4">
@@ -1177,6 +1348,8 @@ export default function TasksPage() {
             onComplete={handleCompleteTask}
             onRefresh={refreshAll}
             onAdd={() => setCreateOpen(true)}
+            onEdit={setEditingTask}
+            onView={setViewingTask}
           />
           <InboxCard
             tasks={inboxTasks}
@@ -1187,16 +1360,30 @@ export default function TasksPage() {
             onComplete={handleCompleteTask}
             onRefresh={refreshAll}
             onAdd={() => setCreateOpen(true)}
+            onEdit={setEditingTask}
+            onView={setViewingTask}
           />
         </div>
-      </div>
+        </div>
 
-      <CreateTaskDialog
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        defaultDate={currentDate}
-        onCreated={refreshAll}
-      />
+        <CreateTaskDialog
+          open={createOpen}
+          onClose={() => setCreateOpen(false)}
+          defaultDate={currentDate}
+          onCreated={refreshAll}
+        />
+        <EditTaskDialog
+          open={!!editingTask}
+          task={editingTask}
+          onClose={() => setEditingTask(null)}
+          onUpdated={refreshAll}
+        />
+        <TaskDetailDialog
+          open={!!viewingTask}
+          task={viewingTask}
+          onClose={() => setViewingTask(null)}
+        />
+      </div>
     </div>
   )
 }

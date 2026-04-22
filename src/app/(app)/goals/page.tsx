@@ -14,6 +14,7 @@ import {
   Calendar,
   Clock,
   Edit2,
+  Eye,
   Trash2,
   CheckCircle2,
   Target,
@@ -24,6 +25,7 @@ import {
   X,
   Sparkles,
   Timer,
+  RefreshCw,
 } from "lucide-react";
 import type {
   Goal,
@@ -75,7 +77,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { getTasks, updateTask, deleteTask, completeTask } from "@/lib/tasks-api";
-import { getSubgoals } from "@/lib/goals-api";
+import { EditTaskDialog } from "@/components/tasks/EditTaskDialog";
+import { TaskDetailDialog } from "@/components/tasks/TaskDetailDialog";
+import { getGoals as getGoalsApi, getSubgoals, searchGoals as searchGoalsApi } from "@/lib/goals-api";
 import { GoalProgressRing } from "@/components/goals/GoalProgressRing";
 import type { Task } from "@/types";
 
@@ -114,6 +118,240 @@ const goalFormSchema = z.object({
 });
 
 type GoalFormValues = z.infer<typeof goalFormSchema>;
+
+interface ParentGoalOption {
+  id: string;
+  title: string;
+  category: GoalCategory;
+  priority: GoalPriority;
+  parentGoalId?: string | null;
+}
+
+function ParentGoalCombobox({
+  value,
+  onChange,
+  allGoals,
+  excludedGoalId,
+}: {
+  value: string;
+  onChange: (id: string) => void;
+  allGoals: Goal[];
+  excludedGoalId?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [options, setOptions] = useState<ParentGoalOption[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selected, setSelected] = useState<ParentGoalOption | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const mapOption = useCallback(
+    (g: Goal): ParentGoalOption => ({
+      id: g.id,
+      title: g.title,
+      category: g.category,
+      priority: g.priority,
+      parentGoalId: g.parentGoalId,
+    }),
+    [],
+  );
+
+  const isValidParent = useCallback(
+    (g: Pick<Goal, "id">) => g.id !== excludedGoalId,
+    [excludedGoalId],
+  );
+
+  const localFallbackOptions = useMemo(
+    () => allGoals.filter((g) => isValidParent(g)).map(mapOption),
+    [allGoals, isValidParent, mapOption],
+  );
+
+  const loadInitial = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await getGoalsApi({ limit: 12, page: 1 });
+      const normalized = res.items.filter((g) => isValidParent(g)).map(mapOption);
+      setOptions(normalized);
+    } catch {
+      setOptions(localFallbackOptions.slice(0, 12));
+    } finally {
+      setLoading(false);
+    }
+  }, [isValidParent, mapOption, localFallbackOptions]);
+
+  const handleSearch = (q: string) => {
+    setQuery(q);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!q.trim()) {
+      loadInitial();
+      return;
+    }
+    debounceRef.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await searchGoalsApi(q.trim(), { limit: 12 });
+        const normalized = res.items.filter((g) => isValidParent(g)).map(mapOption);
+        setOptions(normalized);
+      } catch {
+        const ql = q.trim().toLowerCase();
+        setOptions(localFallbackOptions.filter((g) => g.title.toLowerCase().includes(ql)).slice(0, 12));
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+  };
+
+  const handleOpen = () => {
+    setOpen(true);
+    setQuery("");
+    loadInitial();
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
+  const handleSelect = (goal: ParentGoalOption | null) => {
+    setSelected(goal);
+    onChange(goal?.id ?? "none");
+    setOpen(false);
+    setQuery("");
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  useEffect(() => {
+    if (!value || value === "none") {
+      setSelected(null);
+      return;
+    }
+    if (selected?.id === value) return;
+    const fromOptions = options.find((o) => o.id === value);
+    if (fromOptions) {
+      setSelected(fromOptions);
+      return;
+    }
+    const fromLocal = localFallbackOptions.find((o) => o.id === value);
+    if (fromLocal) setSelected(fromLocal);
+  }, [value, options, selected, localFallbackOptions]);
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={handleOpen}
+        className={cn(
+          "group flex h-10 w-full items-center gap-3 rounded-xl border px-3.5 py-2 text-sm transition-all",
+          "border-input bg-background/60 hover:bg-accent/30 hover:border-violet-400/60",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          open && "border-violet-500/60 bg-accent/30 ring-2 ring-violet-500/20",
+        )}
+      >
+        <div className={cn(
+          "flex size-6 shrink-0 items-center justify-center rounded-lg transition-colors",
+          selected ? "bg-violet-500/15 text-violet-600 dark:text-violet-400" : "bg-muted text-muted-foreground",
+        )}>
+          <FolderTree className="size-3.5" />
+        </div>
+        <span className={cn("flex-1 truncate text-left", !selected && "text-muted-foreground")}>
+          {selected ? selected.title : "None - top-level goal"}
+        </span>
+        {selected && (
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSelect(null);
+            }}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.stopPropagation(); handleSelect(null); } }}
+            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+          >
+            <X className="size-3.5" />
+          </span>
+        )}
+        {!selected && (
+          <ChevronDown className="size-3.5 shrink-0 text-muted-foreground transition-transform group-hover:text-foreground" />
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-2 w-full overflow-hidden rounded-xl border border-border/80 bg-popover shadow-xl shadow-black/10 ring-1 ring-border/20">
+          <div className="flex items-center gap-2.5 border-b border-border/60 px-3.5 py-3">
+            <Search className="size-3.5 shrink-0 text-muted-foreground" />
+            <input
+              ref={inputRef}
+              value={query}
+              onChange={(e) => handleSearch(e.target.value)}
+              placeholder="Search parent goals..."
+              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            />
+            {loading && (
+              <span className="size-3.5 shrink-0 rounded-full border-2 border-violet-500/30 border-t-violet-500 animate-spin" />
+            )}
+          </div>
+
+          <div className="max-h-56 overflow-y-auto py-1.5">
+            <button
+              type="button"
+              onClick={() => handleSelect(null)}
+              className={cn(
+                "flex w-full items-center gap-3 px-3.5 py-2.5 text-sm transition-colors hover:bg-accent",
+                !selected ? "text-foreground" : "text-muted-foreground",
+              )}
+            >
+              <div className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-muted">
+                <X className="size-3.5 text-muted-foreground" />
+              </div>
+              <span>None - top-level</span>
+            </button>
+
+            {options.length === 0 && !loading && (
+              <p className="px-3.5 py-3 text-xs text-muted-foreground">
+                {query ? "No parent goals found for that search." : "No available parent goals found."}
+              </p>
+            )}
+
+            {options.map((g) => {
+              const isSelected = selected?.id === g.id;
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => handleSelect(g)}
+                  className={cn(
+                    "flex w-full items-center gap-3 px-3.5 py-2.5 text-sm transition-colors hover:bg-accent",
+                    isSelected && "bg-violet-500/8",
+                  )}
+                >
+                  <div className={cn(
+                    "flex size-6 shrink-0 items-center justify-center rounded-lg transition-colors",
+                    isSelected ? "bg-violet-500/20 text-violet-600 dark:text-violet-400" : "bg-muted text-muted-foreground",
+                  )}>
+                    <FolderTree className="size-3.5" />
+                  </div>
+                  <div className="min-w-0 flex-1 text-left">
+                    <p className={cn("truncate", isSelected && "font-medium text-violet-700 dark:text-violet-300")}>{g.title}</p>
+                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{categoryConfig[g.category]?.label ?? g.category}</p>
+                  </div>
+                  {isSelected && <CheckCircle2 className="size-3.5 shrink-0 text-violet-500" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -240,11 +478,6 @@ function GoalFormModal({
     });
   }, [open, editingGoal, defaultParentId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const potentialParents = useMemo(
-    () => allGoals.filter((g) => !g.parentGoalId && g.id !== editingGoal?.id),
-    [allGoals, editingGoal],
-  );
-
   const onSubmit = async (data: GoalFormValues) => {
     setSubmitting(true);
     try {
@@ -287,41 +520,46 @@ function GoalFormModal({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && !submitting && onClose()}>
-      <DialogContent className="max-w-lg max-h-[92vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <div className="flex size-7 items-center justify-center rounded-full bg-violet-500/15">
-              <Target className="size-4 text-violet-600 dark:text-violet-400" />
+      <DialogContent className="max-w-xl max-h-[94vh] overflow-y-auto">
+        <DialogHeader className="pb-1">
+          <DialogTitle className="flex items-center gap-3 text-lg">
+            <div className="flex size-9 items-center justify-center rounded-xl bg-violet-500/15 border border-violet-500/20">
+              <Target className="size-5 text-violet-600 dark:text-violet-400" />
             </div>
-            {editingGoal
-              ? "Edit Goal"
-              : lockedParent
-                ? `Sub-goal under "${lockedParent.title}"`
-                : "New Goal"}
+            <div>
+              {editingGoal
+                ? "Edit Goal"
+                : lockedParent
+                  ? `Sub-goal under \"${lockedParent.title}\"`
+                  : "New Goal"}
+              <p className="text-sm font-normal text-muted-foreground mt-0.5">
+                {editingGoal
+                  ? "Update details and keep progress aligned."
+                  : "Define your goal clearly to stay on track."}
+              </p>
+            </div>
           </DialogTitle>
-          <DialogDescription>
-            {editingGoal
-              ? "Update the details of this goal."
-              : "Define your goal clearly to stay on track."}
-          </DialogDescription>
         </DialogHeader>
+
+        <div className="h-px bg-border/60 -mx-6" />
 
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-4 pt-1"
+            className="space-y-5 pt-1"
           >
             <FormField
               control={form.control}
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>
+                  <FormLabel className="text-sm font-medium">
                     Title <span className="text-destructive">*</span>
                   </FormLabel>
                   <FormControl>
                     <Input
                       placeholder="e.g. Get promoted this year"
+                      className="h-10"
                       {...field}
                     />
                   </FormControl>
@@ -335,12 +573,12 @@ function GoalFormModal({
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel className="text-sm font-medium">Description</FormLabel>
                   <FormControl>
                     <Textarea
                       placeholder="Why does this goal matter to you?"
                       rows={3}
-                      className="resize-none"
+                      className="resize-none leading-relaxed"
                       {...field}
                     />
                   </FormControl>
@@ -349,18 +587,18 @@ function GoalFormModal({
               )}
             />
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="category"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
+                    <FormLabel className="text-sm font-medium">
                       Category <span className="text-destructive">*</span>
                     </FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="h-10">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -382,12 +620,12 @@ function GoalFormModal({
                 name="priority"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
+                    <FormLabel className="text-sm font-medium">
                       Priority <span className="text-destructive">*</span>
                     </FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="h-10">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -405,15 +643,15 @@ function GoalFormModal({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="deadline"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Deadline</FormLabel>
+                    <FormLabel className="text-sm font-medium">Deadline</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <Input type="date" className="h-10" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -425,13 +663,14 @@ function GoalFormModal({
                 name="estimatedHours"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Est. Hours</FormLabel>
+                    <FormLabel className="text-sm font-medium">Est. Hours</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
                         min={0}
                         step={0.5}
                         placeholder="e.g. 40"
+                        className="h-10"
                         value={field.value ?? ""}
                         onChange={(e) =>
                           field.onChange(
@@ -453,10 +692,14 @@ function GoalFormModal({
                 control={form.control}
                 name="parentGoalId"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Parent Goal</FormLabel>
+                  <FormItem className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <FolderTree className="size-3.5 text-muted-foreground" />
+                      <FormLabel className="text-sm font-medium">Parent Goal</FormLabel>
+                      <span className="text-[10px] text-muted-foreground bg-muted rounded-full px-1.5 py-0.5">optional</span>
+                    </div>
                     {lockedParent ? (
-                      <div className="flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2 text-sm">
+                      <div className="flex items-center gap-2 rounded-lg border bg-background/70 px-3 py-2 text-sm">
                         <FolderTree className="size-3.5 text-muted-foreground" />
                         <span className="font-medium">
                           {lockedParent.title}
@@ -464,41 +707,36 @@ function GoalFormModal({
                         <span className="text-muted-foreground">(locked)</span>
                       </div>
                     ) : (
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value || "none"}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="None (top-level)" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="none">None — top-level</SelectItem>
-                          {potentialParents.map((g) => (
-                            <SelectItem key={g.id} value={g.id}>
-                              {g.title}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <ParentGoalCombobox
+                          value={field.value || "none"}
+                          onChange={field.onChange}
+                          allGoals={allGoals}
+                        />
+                      </FormControl>
                     )}
+                    <p className="text-[11px] text-muted-foreground">
+                      Link this as a sub-goal under an existing top-level goal.
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             )}
 
-            <DialogFooter className="pt-2 gap-2 sm:gap-0">
+            <div className="h-px bg-border/60 -mx-6" />
+
+            <DialogFooter className="gap-2 sm:gap-2">
               <Button
                 type="button"
                 variant="outline"
                 onClick={onClose}
                 disabled={submitting}
+                className="flex-1 sm:flex-none"
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={submitting}>
+              <Button type="submit" disabled={submitting} className="flex-1 sm:flex-none">
                 {submitting ? (
                   <span className="flex items-center gap-2">
                     <span className="size-3.5 rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground animate-spin" />
@@ -602,6 +840,8 @@ function GoalCard({
   const [tasksLoading, setTasksLoading] = useState(false);
   const [tasksFetched, setTasksFetched] = useState(false);
   const [taskActionLoading, setTaskActionLoading] = useState<string | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [viewingTask, setViewingTask] = useState<Task | null>(null);
   const [subgoals, setSubgoals] = useState<Goal[]>([]);
   const [subgoalsLoading, setSubgoalsLoading] = useState(false);
   const [subgoalsFetched, setSubgoalsFetched] = useState(false);
@@ -1097,8 +1337,8 @@ function GoalCard({
                               {Math.round(task.estimatedDuration / 60000)}m
                             </span>
                           )}
-                          {/* Actions — visible on hover */}
-                          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                          {/* Inline actions — hover only on md+ */}
+                          <div className="hidden md:flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                             <Button
                               variant="ghost" size="icon"
                               className="size-6 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
@@ -1109,56 +1349,58 @@ function GoalCard({
                               <CheckCircle2 className="size-3" />
                             </Button>
                             {isActive ? (
-                              <Button
-                                variant="ghost" size="icon"
-                                className="size-6"
-                                disabled={isLoading}
-                                onClick={() => handleTaskAction(task.id, "pause")}
-                              >
+                              <Button variant="ghost" size="icon" className="size-6" disabled={isLoading} onClick={() => handleTaskAction(task.id, "pause")}>
                                 <Pause className="size-3" />
                               </Button>
                             ) : (
-                              <Button
-                                variant="ghost" size="icon"
-                                className="size-6 text-violet-600 hover:text-violet-700 hover:bg-violet-50 dark:hover:bg-violet-950/30"
-                                disabled={isLoading}
-                                onClick={() => handleTaskAction(task.id, "start")}
-                              >
+                              <Button variant="ghost" size="icon" className="size-6 text-violet-600 hover:text-violet-700 hover:bg-violet-50 dark:hover:bg-violet-950/30" disabled={isLoading} onClick={() => handleTaskAction(task.id, "start")}>
                                 <Play className="size-3" />
                               </Button>
                             )}
                             {isActive && (
                               <Button variant="ghost" size="icon" className="size-6" asChild>
-                                <Link href={`/timer/${task.id}`}>
-                                  <Timer className="size-3 text-violet-500" />
-                                </Link>
+                                <Link href={`/timer/${task.id}`}><Timer className="size-3 text-violet-500" /></Link>
                               </Button>
                             )}
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost" size="icon"
-                                  className="size-6 opacity-60 hover:opacity-100"
-                                  disabled={isLoading}
-                                >
-                                  <MoreHorizontal className="size-3" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-36">
-                                <DropdownMenuLabel className="text-xs">Task</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem asChild>
-                                  <Link href={`/timer/${task.id}`}>
-                                    <Timer className="size-3.5" /> Open Timer
-                                  </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem destructive onClick={() => handleTaskAction(task.id, "delete")}>
-                                  <Trash2 className="size-3.5" /> Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
                           </div>
+                          {/* Dropdown — always visible */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="size-6 opacity-60 hover:opacity-100 md:opacity-0 md:group-hover:opacity-100" disabled={isLoading}>
+                                <MoreHorizontal className="size-3" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-44">
+                              <DropdownMenuLabel className="text-xs">Actions</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => handleTaskAction(task.id, "complete")}>
+                                <CheckCircle2 className="size-3.5" /> Complete
+                              </DropdownMenuItem>
+                              {isActive ? (
+                                <DropdownMenuItem onClick={() => handleTaskAction(task.id, "pause")}>
+                                  <Pause className="size-3.5" /> Pause
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem onClick={() => handleTaskAction(task.id, "start")}>
+                                  <Play className="size-3.5" /> Start
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem asChild>
+                                <Link href={`/timer/${task.id}`}><Timer className="size-3.5" /> Open Timer</Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => setViewingTask(task)}>
+                                <Eye className="size-3.5" /> View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setEditingTask(task)}>
+                                <Edit2 className="size-3.5" /> Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem destructive onClick={() => handleTaskAction(task.id, "delete")}>
+                                <Trash2 className="size-3.5" /> Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       );
                     })}
@@ -1179,20 +1421,25 @@ function GoalCard({
                         <span className="text-xs line-through text-muted-foreground flex-1 truncate">
                           {task.title}
                         </span>
-                        {task.efficiencyScore !== undefined && (
-                          <span
-                            className={cn(
-                              "text-[10px] font-medium shrink-0",
-                              task.efficiencyScore >= 100
-                                ? "text-emerald-600"
-                                : task.efficiencyScore >= 75
-                                  ? "text-amber-600"
-                                  : "text-rose-500",
-                            )}
-                          >
-                            {task.efficiencyScore}%
-                          </span>
-                        )}
+                        {task.efficiencyScore !== undefined && (() => {
+                          const acc = (task.estimatedDuration && task.estimatedDuration > 0 && task.actualDuration && task.actualDuration > 0)
+                            ? Math.min(100, Math.round((Math.min(task.estimatedDuration, task.actualDuration) / Math.max(task.estimatedDuration, task.actualDuration)) * 100))
+                            : null
+                          return acc != null ? (
+                            <span
+                              className={cn(
+                                "text-[10px] font-medium shrink-0",
+                                acc >= 90
+                                  ? "text-emerald-600"
+                                  : acc >= 70
+                                    ? "text-amber-600"
+                                    : "text-rose-500",
+                              )}
+                            >
+                              {acc}%
+                            </span>
+                          ) : null
+                        })()}
                       </div>
                     ))}
                     {completedTasks.length > 3 && (
@@ -1293,6 +1540,20 @@ function GoalCard({
           onClose={() => !actionLoading && setConfirm(null)}
         />
       )}
+      <EditTaskDialog
+        open={!!editingTask}
+        task={editingTask}
+        onClose={() => setEditingTask(null)}
+        onUpdated={(updated: Task) => {
+          setTasks((prev: Task[]) => prev.map(t => t.id === updated.id ? updated : t));
+          setEditingTask(null);
+        }}
+      />
+      <TaskDetailDialog
+        open={!!viewingTask}
+        task={viewingTask}
+        onClose={() => setViewingTask(null)}
+      />
     </div>
   );
 }
@@ -1434,30 +1695,21 @@ export default function GoalsPage() {
 
   return (
     <div className="relative min-h-screen overflow-x-clip bg-background">
-      {/* Background blobs — same pattern as dashboard */}
+      {/* Background blobs */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -top-24 left-1/2 h-[480px] w-[600px] -translate-x-1/2 rounded-full opacity-25 blur-3xl"
-        style={{
-          background:
-            "radial-gradient(circle, oklch(0.6 0.25 280) 0%, transparent 65%)",
-        }}
+        style={{ background: "radial-gradient(circle, oklch(0.6 0.25 280) 0%, transparent 65%)" }}
       />
       <div
         aria-hidden="true"
         className="pointer-events-none absolute right-[-8rem] top-[30%] h-80 w-80 rounded-full opacity-20 blur-3xl"
-        style={{
-          background:
-            "radial-gradient(circle, oklch(0.65 0.22 320) 0%, transparent 65%)",
-        }}
+        style={{ background: "radial-gradient(circle, oklch(0.65 0.22 320) 0%, transparent 65%)" }}
       />
       <div
         aria-hidden="true"
         className="pointer-events-none absolute bottom-0 left-[-4rem] h-[350px] w-[350px] rounded-full opacity-15 blur-3xl"
-        style={{
-          background:
-            "radial-gradient(circle, oklch(0.7 0.18 240) 0%, transparent 65%)",
-        }}
+        style={{ background: "radial-gradient(circle, oklch(0.7 0.18 240) 0%, transparent 65%)" }}
       />
 
       {/* Content */}
@@ -1487,12 +1739,23 @@ export default function GoalsPage() {
                 </p>
               </div>
             </div>
-            <Button
-              onClick={openCreate}
-              className="gap-1.5 bg-zinc-800 text-zinc-100 hover:bg-zinc-700 border border-zinc-700/50 shrink-0"
-            >
-              <Plus className="size-4" /> New Goal
-            </Button>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-9 text-muted-foreground hover:text-foreground"
+                onClick={() => { fetchGoalCounts(); fetchGoals({ ...(statusFilter !== "ALL" ? { status: statusFilter as GoalStatus } : {}), ...(categoryFilter !== "ALL" ? { category: categoryFilter as GoalCategory } : {}), page: 1, limit: PAGE_SIZE }); }}
+                title="Refresh"
+              >
+                <RefreshCw className="size-4" />
+              </Button>
+              <Button
+                onClick={openCreate}
+                className="gap-1.5 bg-zinc-800 text-zinc-100 hover:bg-zinc-700 border border-zinc-700/50 shrink-0"
+              >
+                <Plus className="size-4" /> New Goal
+              </Button>
+            </div>
           </div>
         </div>
 

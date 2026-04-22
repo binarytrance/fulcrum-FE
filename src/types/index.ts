@@ -121,17 +121,20 @@ export type HabitFrequency = 'daily' | 'specific_days';
 
 export type HabitStatus = 'active' | 'paused' | 'archived';
 
-export type OccurrenceStatus = 'PENDING' | 'COMPLETED' | 'SKIPPED';
+export type OccurrenceStatus = 'pending' | 'completed' | 'skipped' | 'missed';
 
 export interface Habit {
   id: string;
-  goalId: string;
+  userId?: string;
+  goalId?: string | null;
   title: string;
-  description?: string;
+  description?: string | null;
   frequency: HabitFrequency;
   daysOfWeek?: number[];
   targetDuration: number;
   status: HabitStatus;
+  currentStreak: number;
+  longestStreak: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -139,12 +142,15 @@ export interface Habit {
 export interface HabitOccurrence {
   id: string;
   habitId: string;
-  scheduledDate: string;
+  userId?: string;
+  scheduledDate?: string;
+  date?: string;
   status: OccurrenceStatus;
-  durationMinutes?: number;
-  note?: string;
-  sessionId?: string;
-  completedAt?: string;
+  durationMinutes?: number | null;
+  note?: string | null;
+  sessionId?: string | null;
+  completedAt?: string | null;
+  createdAt?: string;
 }
 
 export interface HabitAnalytics {
@@ -156,7 +162,7 @@ export interface HabitAnalytics {
 }
 
 export type CreateHabitDto = {
-  goalId: string;
+  goalId?: string | null;
   title: string;
   description?: string;
   frequency: HabitFrequency;
@@ -195,35 +201,79 @@ export type CreateManualSessionDto = {
 
 // ─── Analytics ───────────────────────────────────────────────────────────────
 
+export interface TimeLeak {
+  startTime: string;
+  endTime: string;
+  gapMinutes: number;
+}
+
 export interface DailyAnalytics {
   date: string;
-  totalFocusMinutes: number;
-  completedTasks: number;
-  completedHabits: number;
-  timeLeaks?: Array<{ gapMinutes: number }>;
+  totalLoggedMinutes: number;
+  netFocusMinutes: number;
+  deepWorkMinutes: number;
+  shallowWorkMinutes: number;
+  sessionCount: number;
+  totalDistractions: number;
+  totalDistractionMinutes: number;
+  avgDistractionPerSession: number;
+  totalTaskCount: number;
+  plannedTaskCount: number;
+  unplannedTaskCount: number;
+  completedTaskCount: number;
+  unplannedPercent: number;
+  taskCompletionRate: number;
+  totalHabitCount: number;
+  completedHabitCount: number;
+  skippedHabitCount: number;
+  missedHabitCount: number;
+  habitCompletionRate: number;
+  avgEfficiencyScore: number | null;
+  timeLeaks: TimeLeak[];
+  computedAt: string;
 }
 
 export interface WeeklyAnalytics {
   weekStart: string;
-  totalFocusMinutes: number;
-  completedTasks: number;
-  avgDailyFocus: number;
-  bestDay?: string;
+  totalLoggedMinutes: number;
+  netFocusMinutes: number;
+  deepWorkMinutes: number;
+  totalSessions: number;
+  totalCompletedTasks: number;
+  avgDailyMinutes: number;
+  bestDay: { date: string; minutes: number } | null;
+  worstDay: { date: string; minutes: number } | null;
+  timeLeaksIdentified: number;
+  goalBreakdown: Array<{ goalId: string; goalTitle: string; minutesLogged: number }>;
+  computedAt: string;
 }
 
 export interface GoalAnalytics {
   goalId: string;
+  goalTitle: string;
   totalLoggedMinutes: number;
+  taskCount: number;
+  completedTaskCount: number;
   completionPercent: number;
+  avgEfficiencyScore: number | null;
   consistencyScore: number;
-  projectedCompletionDate?: string;
-  isOnTrack: boolean;
+  weeklyAvgMinutes: number;
+  projectedCompletionDate: string | null;
+  isOnTrack: boolean | null;
+}
+
+export interface EstimationAccuracy {
+  taskId: string;
+  date: string;
+  estimated: number;
+  actual: number;
+  accuracy: number;
 }
 
 export interface EstimationProfile {
-  rollingAverage: number;
+  rollingAverage: number | null;
   trend: 'IMPROVING' | 'DECLINING' | 'STABLE';
-  sampleCount: number;
+  recentAccuracies: EstimationAccuracy[];
 }
 
 export interface AnalyticsDashboard {

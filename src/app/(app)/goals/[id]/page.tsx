@@ -9,6 +9,7 @@ import { z } from "zod"
 import {
   ArrowLeft,
   Edit2,
+  Eye,
   Trash2,
   CheckCircle2,
   Calendar,
@@ -26,7 +27,9 @@ import {
 } from "lucide-react"
 import type { Goal, Task, GoalStatus, GoalCategory, GoalPriority, TaskStatus } from "@/types"
 import { getGoal, getSubgoals } from "@/lib/goals-api"
-import { getPaginatedTasks } from "@/lib/tasks-api"
+import { getPaginatedTasks, updateTask, deleteTask, completeTask } from "@/lib/tasks-api"
+import { EditTaskDialog } from "@/components/tasks/EditTaskDialog"
+import { TaskDetailDialog } from "@/components/tasks/TaskDetailDialog"
 import { useGoalsStore } from "@/store/goals-store"
 import { toast } from "@/components/ui/toast"
 import { Button } from "@/components/ui/button"
@@ -82,6 +85,7 @@ const GOAL_CATEGORIES: GoalCategory[] = [
 ]
 const GOAL_PRIORITIES: GoalPriority[] = ["HIGH", "MEDIUM", "LOW"]
 const TASKS_PAGE_SIZE = 5
+const SUBGOALS_PAGE_SIZE = 5
 const TASK_STATUS_FILTERS: { key: "ALL" | TaskStatus; label: string }[] = [
   { key: "ALL", label: "All" },
   { key: "PENDING", label: "Pending" },
@@ -468,6 +472,8 @@ export default function GoalDetailPage() {
   const [goal, setGoal] = useState<Goal | null>(null)
   const [subgoals, setSubgoals] = useState<Goal[]>([])
   const [loadingSubgoals, setLoadingSubgoals] = useState(false)
+  const [loadingMoreSubgoals, setLoadingMoreSubgoals] = useState(false)
+  const [subgoalsPagination, setSubgoalsPagination] = useState<{ total: number; page: number; totalPages: number } | null>(null)
   const [tasks, setTasks] = useState<Task[]>([])
   const [loadingGoal, setLoadingGoal] = useState(true)
   const [loadingTasks, setLoadingTasks] = useState(false)
@@ -481,6 +487,9 @@ export default function GoalDetailPage() {
   const [confirmLoading, setConfirmLoading] = useState(false)
   const [recoverOpen, setRecoverOpen] = useState(false)
   const [recoverDate, setRecoverDate] = useState("")
+  const [taskActionLoading, setTaskActionLoading] = useState<string | null>(null)
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
+  const [viewingTask, setViewingTask] = useState<Task | null>(null)
 
   const fetchGoalData = useCallback(async () => {
     setLoadingGoal(true)
@@ -495,15 +504,18 @@ export default function GoalDetailPage() {
     }
   }, [goalId])
 
-  const fetchSubgoals = useCallback(async () => {
-    setLoadingSubgoals(true)
+  const fetchSubgoals = useCallback(async (page = 1, append = false) => {
+    if (append) setLoadingMoreSubgoals(true)
+    else setLoadingSubgoals(true)
     try {
-      const res = await getSubgoals(goalId)
-      setSubgoals(res.items)
+      const res = await getSubgoals(goalId, { page, limit: SUBGOALS_PAGE_SIZE })
+      setSubgoals((prev) => append ? [...prev, ...res.items] : res.items)
+      setSubgoalsPagination({ total: res.total, page: res.page, totalPages: res.totalPages })
     } catch {
       // non-critical
     } finally {
-      setLoadingSubgoals(false)
+      if (append) setLoadingMoreSubgoals(false)
+      else setLoadingSubgoals(false)
     }
   }, [goalId])
 
@@ -532,7 +544,7 @@ export default function GoalDetailPage() {
   }, [fetchGoalData])
 
   useEffect(() => {
-    fetchSubgoals()
+    fetchSubgoals(1, false)
   }, [fetchSubgoals])
 
   useEffect(() => {
@@ -608,6 +620,30 @@ export default function GoalDetailPage() {
     }
   }
 
+  const handleTaskAction = useCallback(async (taskId: string, action: "complete" | "start" | "pause" | "delete") => {
+    setTaskActionLoading(taskId)
+    try {
+      if (action === "complete") {
+        await completeTask(taskId)
+        toast.success("Task completed!")
+      } else if (action === "start") {
+        await updateTask(taskId, { status: "IN_PROGRESS" })
+        toast.success("Task started!")
+      } else if (action === "pause") {
+        await updateTask(taskId, { status: "PENDING" })
+        toast.success("Task paused")
+      } else {
+        await deleteTask(taskId)
+        toast.success("Task deleted")
+      }
+      fetchLinkedTasks(1, false)
+    } catch (err) {
+      toast.error("Action failed", err instanceof Error ? err.message : undefined)
+    } finally {
+      setTaskActionLoading(null)
+    }
+  }, [fetchLinkedTasks])
+
   // ── Loading ────────────────────────────────────────────────────────────────
   if (loadingGoal) {
     return (
@@ -660,7 +696,7 @@ export default function GoalDetailPage() {
 
   return (
     <div className="relative min-h-screen overflow-x-clip bg-background">
-      {/* Background blobs — same as goals list */}
+      {/* Background blobs */}
       <div aria-hidden="true" className="pointer-events-none absolute -top-24 left-1/2 h-[480px] w-[600px] -translate-x-1/2 rounded-full opacity-25 blur-3xl"
         style={{ background: "radial-gradient(circle, oklch(0.6 0.25 280) 0%, transparent 65%)" }} />
       <div aria-hidden="true" className="pointer-events-none absolute right-[-8rem] top-[30%] h-80 w-80 rounded-full opacity-20 blur-3xl"
@@ -789,7 +825,7 @@ export default function GoalDetailPage() {
                 <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
                   <FolderTree className="size-3.5" />
                   Sub-goals
-                  {!loadingSubgoals && subgoals.length > 0 && <span className="text-foreground font-normal normal-case tracking-normal">({subgoals.length})</span>}
+                  {!loadingSubgoals && subgoalsPagination && subgoalsPagination.total > 0 && <span className="text-foreground font-normal normal-case tracking-normal">({subgoals.length}/{subgoalsPagination.total})</span>}
                 </div>
                 {!isTerminal && (
                   <Button variant="ghost" size="sm" asChild className="h-6 text-[11px] gap-1 text-muted-foreground hover:text-foreground -mr-1">
@@ -824,6 +860,23 @@ export default function GoalDetailPage() {
                       </Link>
                     )
                   })
+                )}
+                {subgoalsPagination && subgoalsPagination.page < subgoalsPagination.totalPages && (
+                  <button
+                    onClick={() => fetchSubgoals(subgoalsPagination.page + 1, true)}
+                    disabled={loadingMoreSubgoals}
+                    className={cn(
+                      "group flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 px-3 py-2 text-xs font-medium text-muted-foreground transition-all",
+                      "hover:border-violet-500/40 hover:bg-violet-500/5 hover:text-violet-600 dark:hover:text-violet-400",
+                      loadingMoreSubgoals && "cursor-not-allowed opacity-60",
+                    )}
+                  >
+                    {loadingMoreSubgoals ? (
+                      <><span className="size-3.5 rounded-full border-2 border-violet-500/30 border-t-violet-500 animate-spin" /> Loading…</>
+                    ) : (
+                      <>Load {Math.min(SUBGOALS_PAGE_SIZE, subgoalsPagination.total - subgoals.length)} more <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] tabular-nums">{subgoalsPagination.total - subgoals.length} remaining</span></>
+                    )}
+                  </button>
                 )}
               </div>
             </CardContent>
@@ -875,41 +928,105 @@ export default function GoalDetailPage() {
                   <>
                     {tasks.map((task) => {
                       const isDone = task.status === "COMPLETED" || task.status === "CANCELLED"
+                      const isActive = task.status === "IN_PROGRESS"
+                      const isLoading = taskActionLoading === task.id
                       return (
                       <div
                         key={task.id}
                         className={cn(
-                          "flex items-center gap-2.5 rounded-xl border px-3 py-2.5",
+                          "group flex items-center gap-2.5 rounded-xl border px-3 py-2.5 min-w-0",
                           isDone ? "border-transparent bg-muted/30" : "border-border/40 bg-card",
                         )}
                       >
                         {isDone ? (
                           <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
                         ) : (
-                          <div className={cn("size-2 rounded-full shrink-0", task.status === "IN_PROGRESS" ? "bg-amber-400" : "bg-muted-foreground/30")} />
+                          <div className={cn("size-2 rounded-full shrink-0", isActive ? "bg-amber-400" : "bg-muted-foreground/30")} />
                         )}
                         <div className="flex-1 min-w-0">
                           <p className={cn("text-sm font-medium truncate", isDone && "line-through text-muted-foreground")}>{task.title}</p>
                           {task.estimatedDuration !== undefined && (
                             <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
-                              <Clock className="size-2.5" />{task.estimatedDuration}m est.
+                              <Clock className="size-2.5" />{(() => { const ts = Math.round(task.estimatedDuration! / 1000); const h = Math.floor(ts / 3600); const m = Math.floor((ts % 3600) / 60); const s = ts % 60; return h > 0 ? (s > 0 ? `${h}h ${m}m ${s}s` : m > 0 ? `${h}h ${m}m` : `${h}h`) : s > 0 ? `${m}m ${s}s` : `${m}m`; })()} est.
                             </p>
                           )}
                         </div>
                         <Badge variant={taskStatusVariant(task.status)} className="text-[10px] px-1.5 py-0 shrink-0">
                           {task.status.replace("_", " ")}
                         </Badge>
-                        {task.status === "IN_PROGRESS" && (
-                          <Button variant="ghost" size="icon" asChild className="size-6 shrink-0">
-                            <Link href={`/timer/${task.id}`}><Timer className="size-3.5 text-amber-500" /></Link>
-                          </Button>
-                        )}
-                        {task.status === "COMPLETED" && task.efficiencyScore !== undefined && (
-                          <span className={cn("text-[10px] font-medium shrink-0",
-                            task.efficiencyScore >= 100 ? "text-emerald-600" :
-                            task.efficiencyScore >= 75  ? "text-amber-600"   : "text-rose-500")}>
-                            {task.efficiencyScore}%
-                          </span>
+                        {task.status === "COMPLETED" && task.estimatedDuration && task.actualDuration && (() => {
+                          const acc = Math.min(100, Math.round((Math.min(task.estimatedDuration, task.actualDuration) / Math.max(task.estimatedDuration, task.actualDuration)) * 100))
+                          return (
+                            <span className={cn("text-[10px] font-medium shrink-0",
+                              acc >= 90 ? "text-emerald-600" :
+                              acc >= 70 ? "text-amber-600" : "text-rose-500")}>
+                              {acc}%
+                            </span>
+                          )
+                        })()}
+                        {!isDone && (
+                          <div className="flex items-center gap-0.5 shrink-0">
+                            {/* Inline — hover only on md+ */}
+                            <div className="hidden md:flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button variant="ghost" size="icon"
+                                className="size-6 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                                disabled={isLoading} onClick={() => handleTaskAction(task.id, "complete")} title="Complete">
+                                <CheckCircle2 className="size-3" />
+                              </Button>
+                              {isActive ? (
+                                <Button variant="ghost" size="icon" className="size-6" disabled={isLoading} onClick={() => handleTaskAction(task.id, "pause")}>
+                                  <Pause className="size-3" />
+                                </Button>
+                              ) : (
+                                <Button variant="ghost" size="icon" className="size-6 text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/30" disabled={isLoading} onClick={() => handleTaskAction(task.id, "start")}>
+                                  <Play className="size-3" />
+                                </Button>
+                              )}
+                              {isActive && (
+                                <Button variant="ghost" size="icon" className="size-6" asChild>
+                                  <Link href={`/timer/${task.id}`}><Timer className="size-3 text-violet-500" /></Link>
+                                </Button>
+                              )}
+                            </div>
+                            {/* Dropdown — always visible */}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="size-6 opacity-60 hover:opacity-100 md:opacity-0 md:group-hover:opacity-100" disabled={isLoading}>
+                                  <MoreHorizontal className="size-3" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-44">
+                                <DropdownMenuLabel className="text-xs">Actions</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleTaskAction(task.id, "complete")}>
+                                  <CheckCircle2 className="size-3.5" /> Complete
+                                </DropdownMenuItem>
+                                {isActive ? (
+                                  <DropdownMenuItem onClick={() => handleTaskAction(task.id, "pause")}>
+                                    <Pause className="size-3.5" /> Pause
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <DropdownMenuItem onClick={() => handleTaskAction(task.id, "start")}>
+                                    <Play className="size-3.5" /> Start
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem asChild>
+                                  <Link href={`/timer/${task.id}`}><Timer className="size-3.5" /> Open Timer</Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => setViewingTask(task)}>
+                                  <Eye className="size-3.5" /> View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setEditingTask(task)}>
+                                  <Edit2 className="size-3.5" /> Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem destructive onClick={() => handleTaskAction(task.id, "delete")}>
+                                  <Trash2 className="size-3.5" /> Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         )}
                       </div>
                       )
@@ -980,6 +1097,20 @@ export default function GoalDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <EditTaskDialog
+        open={!!editingTask}
+        task={editingTask}
+        onClose={() => setEditingTask(null)}
+        onUpdated={(updated) => {
+          setTasks(prev => prev.map(t => t.id === updated.id ? updated : t))
+          setEditingTask(null)
+        }}
+      />
+      <TaskDetailDialog
+        open={!!viewingTask}
+        task={viewingTask}
+        onClose={() => setViewingTask(null)}
+      />
     </div>
   )
 }

@@ -57,8 +57,8 @@ type TimerStatus =
 
 interface CompletionData {
   sessionId: string
-  durationMinutes: number
-  netFocusMinutes: number
+  durationMs: number
+  netFocusMs: number
   distractionCount: number
   plantStatus: string
   plantGrowthPercent: number
@@ -389,8 +389,18 @@ function CompletionScreen({
     return () => clearTimeout(t)
   }, [])
 
-  const efficiencyPct = data.netFocusMinutes > 0
-    ? Math.round((data.netFocusMinutes / data.durationMinutes) * 100)
+  const fmtMs = (ms: number) => {
+    const totalSec = Math.round(ms / 1000)
+    const h = Math.floor(totalSec / 3600)
+    const m = Math.floor((totalSec % 3600) / 60)
+    const s = totalSec % 60
+    if (h > 0) return s > 0 ? `${h}h ${m}m ${s}s` : m > 0 ? `${h}h ${m}m` : `${h}h`
+    return s > 0 ? `${m}m ${s}s` : `${m}m`
+  }
+  const durationLabel = fmtMs(data.durationMs)
+  const netFocusLabel = fmtMs(data.netFocusMs)
+  const efficiencyPct = data.netFocusMs > 0
+    ? Math.round((data.netFocusMs / data.durationMs) * 100)
     : 100
 
   return (
@@ -429,13 +439,13 @@ function CompletionScreen({
           {
             icon: Clock,
             label: "Duration",
-            value: `${data.durationMinutes}m`,
+            value: durationLabel,
             color: "text-blue-400",
           },
           {
             icon: Zap,
             label: "Net Focus",
-            value: `${data.netFocusMinutes}m`,
+            value: netFocusLabel,
             color: "text-green-400",
           },
           {
@@ -655,8 +665,8 @@ export default function TimerPage() {
       "sessionStopped",
       (data: {
         sessionId: string
-        durationMinutes: number
-        netFocusMinutes: number
+        durationMs: number
+        netFocusMs: number
         distractionCount: number
         plantStatus: string
         plantGrowthPercent: number
@@ -665,7 +675,13 @@ export default function TimerPage() {
         stopLocalTick()
         stopHeartbeat()
         setStatus("completed")
-        setCompletion(data)
+        setCompletion({
+          ...data,
+          durationMs: data.durationMs ?? 0,
+          netFocusMs: data.netFocusMs ?? 0,
+          distractionCount: data.distractionCount ?? 0,
+          plantGrowthPercent: data.plantGrowthPercent ?? 0,
+        })
         endSession()
       }
     )

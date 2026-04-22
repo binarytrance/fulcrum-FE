@@ -18,21 +18,32 @@ import type {
 // Habits CRUD
 // ---------------------------------------------------------------------------
 
+export interface HabitsPaged {
+  items: Habit[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+}
+
 /**
- * Retrieve all habits, optionally filtered by the goal they belong to.
+ * Retrieve habits with pagination and optional filters.
  */
-export async function getHabits(filters?: { goalId?: string }): Promise<Habit[]> {
+export async function getHabits(filters?: {
+  goalId?: string
+  status?: string
+  page?: number
+  limit?: number
+}): Promise<HabitsPaged> {
   const params = new URLSearchParams()
-
-  if (filters?.goalId !== undefined) {
-    params.set('goalId', filters.goalId)
-  }
-
+  if (filters?.goalId) params.set('goalId', filters.goalId)
+  if (filters?.status) params.set('status', filters.status)
+  if (filters?.page !== undefined) params.set('page', String(filters.page))
+  if (filters?.limit !== undefined) params.set('limit', String(filters.limit))
   const query = params.toString()
   const path = query ? `/habits?${query}` : '/habits'
-
   const response = await apiFetch(path)
-  return unwrapApiResponse<Habit[]>(response)
+  return unwrapApiResponse<HabitsPaged>(response)
 }
 
 /**

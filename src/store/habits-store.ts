@@ -10,12 +10,29 @@ import type {
 
 type DueTodayEntry = Habit & { occurrenceId?: string; occurrenceStatus?: OccurrenceStatus }
 
+export type HabitPagination = {
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+}
+
+export type HabitFilters = {
+  goalId?: string
+  status?: string
+  page?: number
+  limit?: number
+}
+
 type HabitsState = {
   habits: Habit[]
   todaysHabits: DueTodayEntry[]
   loading: boolean
+  loadingMore: boolean
   error: string | null
-  fetchHabits: (filters?: { goalId?: string }) => Promise<void>
+  pagination: HabitPagination | null
+  fetchHabits: (filters?: HabitFilters) => Promise<void>
+  loadMoreHabits: (filters?: HabitFilters) => Promise<void>
   fetchDueToday: () => Promise<void>
   createHabit: (data: CreateHabitDto) => Promise<Habit>
   updateHabit: (id: string, data: UpdateHabitDto) => Promise<Habit>
@@ -34,18 +51,48 @@ export const useHabitsStore = create<HabitsState>((set) => ({
   habits: [],
   todaysHabits: [],
   loading: false,
+  loadingMore: false,
   error: null,
+  pagination: null,
 
   fetchHabits: async (filters) => {
     set({ loading: true, error: null })
     try {
-      const habits = await habitsApi.getHabits(filters)
-      set({ habits, loading: false })
+      const result = await habitsApi.getHabits(filters)
+      set({
+        habits: result.items,
+        loading: false,
+        pagination: {
+          total: result.total,
+          page: result.page,
+          limit: result.limit,
+          totalPages: result.totalPages,
+        },
+      })
     } catch (e) {
       set({
         loading: false,
         error: e instanceof Error ? e.message : 'Failed to load habits',
       })
+    }
+  },
+
+  loadMoreHabits: async (filters) => {
+    set({ loadingMore: true })
+    try {
+      const result = await habitsApi.getHabits(filters)
+      set((s) => ({
+        habits: [...s.habits, ...result.items],
+        loadingMore: false,
+        pagination: {
+          total: result.total,
+          page: result.page,
+          limit: result.limit,
+          totalPages: result.totalPages,
+        },
+      }))
+    } catch {
+      set({ loadingMore: false })
     }
   },
 
@@ -102,7 +149,7 @@ export const useHabitsStore = create<HabitsState>((set) => ({
     set((s) => ({
       todaysHabits: s.todaysHabits.map((h) =>
         h.id === habitId
-          ? { ...h, occurrenceStatus: 'COMPLETED' as const }
+          ? { ...h, occurrenceStatus: 'completed' as const }
           : h,
       ),
     }))
@@ -114,7 +161,7 @@ export const useHabitsStore = create<HabitsState>((set) => ({
     set((s) => ({
       todaysHabits: s.todaysHabits.map((h) =>
         h.id === habitId
-          ? { ...h, occurrenceStatus: 'SKIPPED' as const }
+          ? { ...h, occurrenceStatus: 'skipped' as const }
           : h,
       ),
     }))
