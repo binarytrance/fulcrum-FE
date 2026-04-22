@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:6969/api/v1";
+import { API_BASE } from "@/utils/auth";
 
 // ---------------------------------------------------------------------------
 // NestJS response envelope -- every endpoint returns this shape

@@ -1,5 +1,7 @@
-export const AUTH_API_BASE =
-    process.env.NEXT_PUBLIC_AUTH_API_BASE ?? 'http://localhost:6969/api/v1/auth';
+export const API_BASE =
+    process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:6969/api/v1';
+
+export const AUTH_API_BASE = `${API_BASE}/auth`;
 
 const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_BASE_URL;
 

@@ -1,7 +1,6 @@
 import { setAccessToken } from "@/lib/api";
+import { AUTH_API_BASE } from "@/utils/auth";
 import type { AuthUser } from "@/types";
-
-const API_BASE = "http://localhost:6969/api/v1";
 
 type MeApiResponse = {
   success: boolean;
@@ -23,7 +22,7 @@ export async function exchangeOAuthCode(
   code: string,
   codeVerifier: string,
 ): Promise<AuthUser> {
-  const response = await fetch(`${API_BASE}/auth/oauth/exchange`, {
+  const response = await fetch(`${AUTH_API_BASE}/oauth/exchange`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     credentials: 'include', // so the backend can set the refresh cookie
@@ -52,7 +51,7 @@ export async function completeAuthWithTokens(
   // Store the access token in memory so subsequent apiFetch calls include it.
   setAccessToken(accessToken);
 
-  const response = await fetch(`${API_BASE}/auth/me`, {
+  const response = await fetch(`${AUTH_API_BASE}/me`, {
     method: "GET",
     headers: {
       Accept: "application/json",

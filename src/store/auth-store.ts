@@ -1,10 +1,9 @@
 import { create } from 'zustand'
 import { setAccessToken, clearAccessToken, refreshAccessToken, apiFetch } from '../lib/api'
+import { AUTH_API_BASE } from '../utils/auth'
 import type { AuthUser } from '../types'
 
 export type { AuthUser }
-
-const API_BASE = 'http://localhost:6969/api/v1'
 
 type AuthState = {
   user: AuthUser | null
@@ -42,7 +41,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user: null, isAuthenticated: false })
     // Revoke the refresh token cookie on the backend (uses HttpOnly cookie, not Bearer)
     try {
-      await fetch(`${API_BASE}/auth/signout`, {
+      await fetch(`${AUTH_API_BASE}/signout`, {
         method: 'POST',
         credentials: 'include',
       })
@@ -67,7 +66,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       const accessToken = await refreshAccessToken()
       if (!accessToken) return
 
-      const meResponse = await fetch(`${API_BASE}/auth/me`, {
+      const meResponse = await fetch(`${AUTH_API_BASE}/me`, {
         method: 'GET',
         headers: {
           Accept: 'application/json',
