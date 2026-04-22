@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
@@ -18,11 +18,21 @@ function GoogleSigninCallbackContent() {
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // React Strict Mode mounts → unmounts → remounts every component in dev.
+  // hasStartedRef (preserved across remount) ensures we only attempt the
+  // one-time code exchange once — preventing a double-POST that would cause
+  // the second request to fail with "invalid or expired authorization code".
+  const hasStartedRef = useRef(false);
 
   useEffect(() => {
-    let cancelled = false;
+    if (hasStartedRef.current) return;
+    hasStartedRef.current = true;
 
-    async function finish() {
+    // consumeCodeVerifier() is called inside this guarded block so it runs
+    // exactly once regardless of Strict Mode double-invocation.
+    const codeVerifier = consumeCodeVerifier();
+
+    (async () => {
       // The backend redirects here with a short-lived one-time code.
       // e.g. /signin/google/callback?code=ONE_TIME_CODE
       const code = searchParams.get("code");
@@ -41,7 +51,6 @@ function GoogleSigninCallbackContent() {
         return;
       }
 
-      const codeVerifier = consumeCodeVerifier();
       if (!codeVerifier) {
         setError("Missing PKCE verifier. Please try signing in again.");
         setLoading(false);
@@ -50,11 +59,9 @@ function GoogleSigninCallbackContent() {
 
       try {
         const user = await exchangeOAuthCode(code, codeVerifier);
-        if (cancelled) return;
         setUser(user);
         router.replace("/dashboard");
       } catch (err) {
-        if (cancelled) return;
         setError(
           err instanceof Error
             ? err.message
@@ -62,12 +69,7 @@ function GoogleSigninCallbackContent() {
         );
         setLoading(false);
       }
-    }
-
-    finish();
-    return () => {
-      cancelled = true;
-    };
+    })();
   }, [searchParams, router, setUser]);
 
   // ── Error state ──────────────────────────────────────────────────────────────
