@@ -23,7 +23,7 @@ import {
   type GoalCategory,
   type GoalPriority,
   type GoalResponse,
-} from "@/utils/goals-api";
+} from "@/modules/goals/api/goals-api";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";

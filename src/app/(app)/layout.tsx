@@ -11,11 +11,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const hydrate = useAuthStore(s => s.hydrate);
 
   useEffect(() => {
-    // If we already have an in-memory access token, we're good.
     if (isAuthenticated || getAccessToken()) return;
 
-    // Otherwise try to rehydrate from the HttpOnly refresh-token cookie.
-    // hydrate() calls /auth/refresh — if it fails the user isn't logged in.
     hydrate().then(() => {
       if (!useAuthStore.getState().isAuthenticated) {
         router.replace("/signin");

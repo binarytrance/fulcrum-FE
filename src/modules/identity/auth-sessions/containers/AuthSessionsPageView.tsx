@@ -15,12 +15,19 @@ import {
 } from "lucide-react";
 
 import { useAuthStore } from "@/store/auth-store";
-import { listSessions, revokeSession } from "@/utils/sessions-api";
+import {
+  listSessions,
+  revokeSession,
+} from "@/modules/identity/auth-sessions/api/auth-sessions-api";
 import type { AuthSession } from "@/types";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 
 function formatDate(iso: string): string {
   try {
@@ -50,16 +57,14 @@ function parseBrowser(userAgent: string | null): string {
   return "Unknown browser";
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
-export default function SessionsPage() {
+export function AuthSessionsPageView() {
   const router = useRouter();
   const { signoutAll } = useAuthStore();
 
   const [sessions, setSessions] = useState<AuthSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [revoking, setRevoking] = useState<string | null>(null); // sessionId being revoked
+  const [revoking, setRevoking] = useState<string | null>(null);
   const [revokingAll, setRevokingAll] = useState(false);
   const [confirmRevokeAll, setConfirmRevokeAll] = useState(false);
 
@@ -68,12 +73,13 @@ export default function SessionsPage() {
     setError(null);
     try {
       const data = await listSessions();
-      // Current session first, then by most recently rotated
       setSessions(
         [...data].sort((a, b) => {
           if (a.current) return -1;
           if (b.current) return 1;
-          return new Date(b.lastRotatedAt).getTime() - new Date(a.lastRotatedAt).getTime();
+          return (
+            new Date(b.lastRotatedAt).getTime() - new Date(a.lastRotatedAt).getTime()
+          );
         }),
       );
     } catch (err) {
@@ -84,16 +90,16 @@ export default function SessionsPage() {
   }, []);
 
   useEffect(() => {
-    fetchSessions();
+    void fetchSessions();
   }, [fetchSessions]);
 
   const handleRevoke = async (sessionId: string, isCurrent: boolean) => {
     setRevoking(sessionId);
+    setError(null);
     try {
       await revokeSession(sessionId);
       if (isCurrent) {
-        // Current session revoked — sign out locally and redirect
-        await signoutAll(); // clears local state (session already revoked on BE)
+        await signoutAll();
         router.replace("/signin");
         return;
       }
@@ -111,6 +117,7 @@ export default function SessionsPage() {
       return;
     }
     setRevokingAll(true);
+    setError(null);
     try {
       await signoutAll();
       router.replace("/signin");
@@ -123,7 +130,6 @@ export default function SessionsPage() {
 
   return (
     <div className="mx-auto min-h-screen max-w-2xl px-4 py-10">
-      {/* Header */}
       <div className="mb-8 flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild className="shrink-0">
           <Link href="/dashboard">
@@ -139,7 +145,6 @@ export default function SessionsPage() {
         </div>
       </div>
 
-      {/* Loading */}
       {loading && (
         <div className="flex items-center justify-center py-20 text-muted-foreground">
           <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -147,7 +152,6 @@ export default function SessionsPage() {
         </div>
       )}
 
-      {/* Error */}
       {!loading && error && (
         <div className="mb-6 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
@@ -155,18 +159,13 @@ export default function SessionsPage() {
         </div>
       )}
 
-      {/* Session list */}
       {!loading && !error && (
         <>
           <div className="space-y-3">
             {sessions.map((session) => (
               <Card
                 key={session.sessionId}
-                className={
-                  session.current
-                    ? "border-primary/40 bg-primary/5"
-                    : "border-border"
-                }
+                className={session.current ? "border-primary/40 bg-primary/5" : "border-border"}
               >
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between gap-3">
@@ -186,7 +185,8 @@ export default function SessionsPage() {
                         <CardDescription className="text-xs">
                           {session.ipAddress ?? "Unknown IP"} ·{" "}
                           {session.userAgent
-                            ? session.userAgent.slice(0, 60) + (session.userAgent.length > 60 ? "…" : "")
+                            ? session.userAgent.slice(0, 60) +
+                              (session.userAgent.length > 60 ? "…" : "")
                             : "Unknown user agent"}
                         </CardDescription>
                       </div>
@@ -227,15 +227,12 @@ export default function SessionsPage() {
             ))}
           </div>
 
-          {/* Sign out all */}
           {sessions.length > 1 && (
             <div className="mt-8 rounded-xl border border-destructive/20 bg-destructive/5 p-5">
-              <p className="text-sm font-medium text-foreground">
-                Sign out all devices
-              </p>
+              <p className="text-sm font-medium text-foreground">Sign out all devices</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                This will immediately revoke all active sessions including this one.
-                You will be redirected to the sign in page.
+                This will immediately revoke all active sessions including this one. You will be
+                redirected to the sign in page.
               </p>
               <Button
                 variant="destructive"
@@ -244,9 +241,7 @@ export default function SessionsPage() {
                 disabled={revokingAll}
                 onClick={handleRevokeAll}
               >
-                {revokingAll ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : null}
+                {revokingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 {confirmRevokeAll
                   ? revokingAll
                     ? "Signing out…"

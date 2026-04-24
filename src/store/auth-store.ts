@@ -1,10 +1,9 @@
 import { create } from 'zustand'
 import { setAccessToken, clearAccessToken, refreshAccessToken, apiFetch } from '../lib/api'
+import { API_V1_BASE as API_BASE } from '../utils/api'
 import type { AuthUser } from '../types'
 
 export type { AuthUser }
-
-const API_BASE = 'http://localhost:6969/api/v1'
 
 type AuthState = {
   user: AuthUser | null
