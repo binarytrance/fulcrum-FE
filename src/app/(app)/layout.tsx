@@ -31,7 +31,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     });
   }, [isAuthenticated, hydrate, router]);
 
-  if (!ready) return null;
+  if (!ready) {
+    return (
+      <AppShell>
+        <div className="flex h-screen items-center justify-center">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-border border-t-foreground" />
+        </div>
+      </AppShell>
+    );
+  }
 
   return <AppShell>{children}</AppShell>;
 }
