@@ -2,14 +2,12 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   Zap,
   CalendarDays,
   Target,
   Activity,
-  Monitor,
-  LogOut,
+  Settings,
   ChevronLeft,
   ChevronRight,
   Menu,
@@ -19,6 +17,7 @@ import { useTranslations } from "next-intl";
 
 import { useAuthStore } from "@/store/auth-store";
 import { NavLink } from "./NavLink";
+import { Avatar } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
@@ -33,8 +32,7 @@ type NavContentProps = {
 };
 
 function NavContent({ collapsed, onClose, onToggleCollapse }: NavContentProps) {
-  const router = useRouter();
-  const clearAuth = useAuthStore((s) => s.clearAuth);
+  const user = useAuthStore((s) => s.user);
   const t = useTranslations("Nav");
 
   const navItems = [
@@ -43,10 +41,10 @@ function NavContent({ collapsed, onClose, onToggleCollapse }: NavContentProps) {
     { href: "/habits", icon: <Activity className="h-4 w-4" />, label: t("habits") }
   ];
 
-  const handleSignOut = async () => {
-    await clearAuth();
-    router.replace("/signin");
-  };
+  const firstname = user?.firstname ?? "";
+  const lastname = user?.lastname ?? "";
+  const fullName = [firstname, lastname].filter(Boolean).join(" ");
+  const initials = [firstname[0], lastname[0]].filter(Boolean).join("").toUpperCase();
 
   return (
     <div className="flex h-full flex-col">
@@ -93,38 +91,16 @@ function NavContent({ collapsed, onClose, onToggleCollapse }: NavContentProps) {
 
       {/* Bottom section */}
       <div className="shrink-0 border-t border-border px-2 py-2 space-y-0.5">
+        {/* Preferences */}
         <NavLink
           href="/settings/sessions"
-          icon={<Monitor className="h-4 w-4" />}
-          label={t("sessions")}
+          icon={<Settings className="h-4 w-4" />}
+          label={t("preferences")}
           collapsed={collapsed}
           onClick={onClose}
         />
 
-        {/* Sign out */}
-        {collapsed ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={handleSignOut}
-                className="flex w-full justify-center rounded-md px-2 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-destructive"
-              >
-                <LogOut className="h-4 w-4 shrink-0" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right">{t("signOut")}</TooltipContent>
-          </Tooltip>
-        ) : (
-          <button
-            onClick={handleSignOut}
-            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-destructive"
-          >
-            <LogOut className="h-4 w-4 shrink-0" />
-            <span>{t("signOut")}</span>
-          </button>
-        )}
-
-        {/* Collapse toggle — only shown on desktop sidebar (no onClose means it's desktop) */}
+        {/* Collapse toggle — desktop only */}
         {!onClose && onToggleCollapse && (
           <button
             onClick={onToggleCollapse}
@@ -143,6 +119,32 @@ function NavContent({ collapsed, onClose, onToggleCollapse }: NavContentProps) {
             )}
           </button>
         )}
+
+        {/* User profile */}
+        {collapsed ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex justify-center rounded-md px-2 py-2 cursor-default">
+                <Avatar initials={initials || "?"} className="h-7 w-7" />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="right">{fullName || t("profile")}</TooltipContent>
+          </Tooltip>
+        ) : (
+          <div className="flex items-center gap-3 rounded-md px-3 py-2">
+            <Avatar initials={initials || "?"} className="h-7 w-7 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground leading-tight truncate">
+                {firstname}
+              </p>
+              {lastname && (
+                <p className="text-xs text-muted-foreground leading-tight truncate">
+                  {lastname}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -155,7 +157,6 @@ export function LeftNav() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Rehydrate collapse state from localStorage
   useEffect(() => {
     const stored = localStorage.getItem(COLLAPSED_KEY);
     if (stored !== null) setCollapsed(stored === "true");
@@ -179,15 +180,11 @@ export function LeftNav() {
           collapsed ? "w-16" : "w-60"
         )}
       >
-        <NavContent
-          collapsed={collapsed}
-          onToggleCollapse={toggleCollapsed}
-        />
+        <NavContent collapsed={collapsed} onToggleCollapse={toggleCollapsed} />
       </aside>
 
       {/* ── Mobile ───────────────────────────────────────────────────────── */}
       <div className="lg:hidden">
-        {/* Fixed topbar */}
         <div className="fixed inset-x-0 top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-background px-4">
           <button
             onClick={() => setMobileOpen(true)}
@@ -205,7 +202,6 @@ export function LeftNav() {
           </Link>
         </div>
 
-        {/* Drawer overlay */}
         {mobileOpen && (
           <>
             <div
@@ -213,10 +209,7 @@ export function LeftNav() {
               onClick={() => setMobileOpen(false)}
             />
             <aside className="fixed inset-y-0 left-0 z-50 w-60 bg-card shadow-xl">
-              <NavContent
-                collapsed={false}
-                onClose={() => setMobileOpen(false)}
-              />
+              <NavContent collapsed={false} onClose={() => setMobileOpen(false)} />
             </aside>
           </>
         )}
