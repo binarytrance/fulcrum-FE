@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { setAccessToken, clearAccessToken, refreshAccessToken, apiFetch } from '../lib/api'
-import { API_V1_BASE as API_BASE } from '../utils/api'
+import { API_V1_BASE as API_BASE } from '../lib/api'
 import type { AuthUser } from '../types'
 
 export type { AuthUser }

@@ -1,4 +1,12 @@
-import { API_V1_BASE as API_BASE } from "@/utils/api";
+export const API_V1_BASE =
+  (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:6969") + "/api/v1";
+
+const API_BASE = API_V1_BASE;
+
+export function buildApiUrl(path: string): string {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${API_BASE}${normalizedPath}`;
+}
 
 // ---------------------------------------------------------------------------
 // NestJS response envelope -- every endpoint returns this shape

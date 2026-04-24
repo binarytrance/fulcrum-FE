@@ -1,5 +1,4 @@
-import { setAccessToken } from "@/lib/api";
-import { API_V1_BASE as API_BASE } from "@/utils/api";
+import { setAccessToken, API_V1_BASE as API_BASE } from "@/lib/api";
 import type { AuthUser } from "@/types";
 
 type MeApiResponse = {
