@@ -64,7 +64,7 @@ export default function DashboardPage() {
       {/* Actions */}
       <div className="flex items-center gap-3">
         <Button variant="outline" size="sm" asChild>
-          <Link href="/sessions">
+          <Link href="/settings/sessions">
             <Monitor className="mr-2 h-4 w-4" />
             Manage sessions
           </Link>

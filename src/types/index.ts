@@ -29,51 +29,6 @@ export type AuthSession = {
   expiresAt: string;
 };
 
-// ─── Goals ───────────────────────────────────────────────────────────────────
-
-export type GoalStatus = 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'ABANDONED';
-
-export type GoalCategory =
-  | 'CAREER'
-  | 'LEARNING'
-  | 'HEALTH'
-  | 'PERSONAL'
-  | 'FINANCIAL'
-  | 'OTHER';
-
-export type GoalPriority = 'HIGH' | 'MEDIUM' | 'LOW';
-
-export interface Goal {
-  id: string;
-  title: string;
-  description?: string;
-  status: GoalStatus;
-  category: GoalCategory;
-  priority: GoalPriority;
-  deadline?: string;
-  estimatedHours?: number;
-  parentGoalId?: string | null;
-  children?: Goal[];
-  progress?: { score: number };
-  isReadyToComplete?: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export type CreateGoalDto = {
-  title: string;
-  description?: string;
-  category: GoalCategory;
-  priority: GoalPriority;
-  deadline?: string;
-  estimatedHours?: number;
-  parentGoalId?: string;
-};
-
-export type UpdateGoalDto = Partial<Omit<CreateGoalDto, 'parentGoalId'>> & {
-  status?: GoalStatus;
-};
-
 // ─── Tasks ───────────────────────────────────────────────────────────────────
 
 export type TaskStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
@@ -85,7 +40,7 @@ export interface Task {
   title: string;
   description?: string;
   status: TaskStatus;
-  priority: GoalPriority;
+  priority: 'HIGH' | 'MEDIUM' | 'LOW';
   type: TaskType;
   scheduledFor?: string;
   estimatedDuration?: number;
@@ -99,7 +54,7 @@ export interface Task {
 export type CreateTaskDto = {
   title: string;
   description?: string;
-  priority: GoalPriority;
+  priority: 'HIGH' | 'MEDIUM' | 'LOW';
   type: TaskType;
   scheduledFor?: string;
   estimatedDuration?: number;

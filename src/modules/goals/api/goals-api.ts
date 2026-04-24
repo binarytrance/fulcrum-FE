@@ -81,9 +81,10 @@ type ApiFailure = {
 export async function createGoal(
   input: CreateGoalInput
 ): Promise<{ response: Response; payload?: ApiSuccess<GoalResponse> | ApiFailure }> {
-  const body: CreateGoalInput = {
-    ...input,
-    deadline: input.deadline ? new Date(input.deadline).toISOString() : undefined,
+  const { deadline, ...rest } = input;
+  const body = {
+    ...rest,
+    ...(deadline ? { estimatedEndDate: new Date(deadline).toISOString() } : {}),
   };
 
   const response = await apiFetch("/goals", {
@@ -106,15 +107,10 @@ export async function updateGoal(
   id: string,
   input: UpdateGoalInput
 ): Promise<{ response: Response; payload?: ApiSuccess<GoalResponse> | ApiFailure }> {
-  const body: UpdateGoalInput = {
-    ...input,
-    deadline:
-      input.deadline === null
-        ? null
-        : input.deadline
-          ? new Date(input.deadline).toISOString()
-          : undefined,
-  };
+  const { deadline, ...rest } = input;
+  const body: Record<string, unknown> = { ...rest };
+  if (deadline === null) body.estimatedEndDate = null;
+  else if (deadline) body.estimatedEndDate = new Date(deadline).toISOString();
 
   const response = await apiFetch(`/goals/${id}`, {
     method: "PATCH",

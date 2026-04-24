@@ -1,7 +1,6 @@
 import { setAccessToken } from "@/lib/api";
+import { API_V1_BASE as API_BASE } from "@/utils/api";
 import type { AuthUser } from "@/types";
-
-const API_BASE = "http://localhost:6969/api/v1";
 
 type MeApiResponse = {
   success: boolean;
