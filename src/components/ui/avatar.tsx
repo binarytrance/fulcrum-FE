@@ -1,51 +1,36 @@
-import * as React from "react"
-import * as AvatarPrimitive from "@radix-ui/react-avatar"
+"use client";
 
-import { cn } from "@/lib/utils"
+import * as AvatarPrimitive from "@radix-ui/react-avatar";
+import { cn } from "@/lib/utils";
 
-function Avatar({
-  className,
-  ...props
-}: React.ComponentProps<typeof AvatarPrimitive.Root>) {
+type AvatarProps = {
+  initials?: string;
+  src?: string;
+  alt?: string;
+  className?: string;
+};
+
+export function Avatar({ initials, src, alt, className }: AvatarProps) {
   return (
     <AvatarPrimitive.Root
-      data-slot="avatar"
       className={cn(
-        "relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full",
+        "relative flex h-8 w-8 shrink-0 overflow-hidden rounded-full",
         className
       )}
-      {...props}
-    />
-  )
-}
-
-function AvatarImage({
-  className,
-  ...props
-}: React.ComponentProps<typeof AvatarPrimitive.Image>) {
-  return (
-    <AvatarPrimitive.Image
-      data-slot="avatar-image"
-      className={cn("aspect-square h-full w-full object-cover", className)}
-      {...props}
-    />
-  )
-}
-
-function AvatarFallback({
-  className,
-  ...props
-}: React.ComponentProps<typeof AvatarPrimitive.Fallback>) {
-  return (
-    <AvatarPrimitive.Fallback
-      data-slot="avatar-fallback"
-      className={cn(
-        "flex h-full w-full items-center justify-center rounded-full bg-muted text-sm font-medium text-muted-foreground",
-        className
+    >
+      {src && (
+        <AvatarPrimitive.Image
+          src={src}
+          alt={alt ?? initials ?? ""}
+          className="aspect-square h-full w-full object-cover"
+        />
       )}
-      {...props}
-    />
-  )
+      <AvatarPrimitive.Fallback
+        delayMs={0}
+        className="flex h-full w-full items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary"
+      >
+        {initials ?? "?"}
+      </AvatarPrimitive.Fallback>
+    </AvatarPrimitive.Root>
+  );
 }
-
-export { Avatar, AvatarImage, AvatarFallback }
