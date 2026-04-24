@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
@@ -11,33 +12,29 @@ import {
   getGoals,
   updateGoal,
   type GoalResponse,
-  type GoalTreeNode,
+  type GoalTreeNode
 } from "@/modules/goals/api/goals-api";
 import { CreateGoalForm } from "@/modules/goals/components/CreateGoalForm";
 import { GoalsList } from "@/modules/goals/components/GoalsList";
 
-type GoalEditorState =
-  | { mode: "create" }
-  | { mode: "edit"; goal: GoalTreeNode }
-  | null;
+type GoalEditorState = { mode: "create" } | { mode: "edit"; goal: GoalTreeNode } | null;
 
 export function GoalsFullListView() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const clearAuth = useAuthStore((state) => state.clearAuth);
+  const t = useTranslations("Goals.list");
 
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [goalEditor, setGoalEditor] = useState<GoalEditorState>(null);
   const [goalsLoading, setGoalsLoading] = useState(false);
   const [goalsError, setGoalsError] = useState<string | null>(null);
   const [goals, setGoals] = useState<GoalTreeNode[] | null>(null);
-  const [completingIds, setCompletingIds] = useState<Set<string>>(
-    () => new Set(),
-  );
+  const [completingIds, setCompletingIds] = useState<Set<string>>(() => new Set());
 
   const isAuthedLabel = user?.email
-    ? `Signed in as ${String(user.email)}`
-    : "Signed in with cookie session";
+    ? t("signedInAs", { email: String(user.email) })
+    : t("signedInSession");
 
   const fetchGoals = useCallback(async () => {
     setGoalsLoading(true);
@@ -51,22 +48,22 @@ export function GoalsFullListView() {
         return;
       }
       if (!response.ok) {
-        setGoalsError("Could not load goals right now.");
+        setGoalsError(t("loadError"));
         return;
       }
 
       if (!payload || !("success" in payload) || !payload.success) {
-        setGoalsError("Could not load goals right now.");
+        setGoalsError(t("loadError"));
         return;
       }
 
       setGoals(payload.data ?? null);
     } catch {
-      setGoalsError("Could not load goals right now.");
+      setGoalsError(t("loadError"));
     } finally {
       setGoalsLoading(false);
     }
-  }, [clearAuth, router]);
+  }, [clearAuth, router, t]);
 
   useEffect(() => {
     void fetchGoals();
@@ -86,7 +83,7 @@ export function GoalsFullListView() {
 
     try {
       const { response, payload } = await updateGoal(goalId, {
-        status: "COMPLETED",
+        status: "COMPLETED"
       });
 
       if (response.status === 401) {
@@ -103,7 +100,7 @@ export function GoalsFullListView() {
       if (payload && "success" in payload && payload.success) {
         toast.success(payload.message);
       } else {
-        toast.success("Goal updated.");
+        toast.success(t("goalUpdated"));
       }
 
       await fetchGoals();
@@ -120,12 +117,12 @@ export function GoalsFullListView() {
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-4 sm:p-8">
       <div className="flex flex-col gap-3 rounded-md border p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Goals</h1>
+          <h1 className="text-2xl font-bold">{t("pageTitle")}</h1>
           <p className="text-sm text-muted-foreground">{isAuthedLabel}</p>
         </div>
 
         <Button variant="destructive" onClick={handleLogout} disabled={logoutLoading}>
-          {logoutLoading ? "Logging out..." : "Logout"}
+          {logoutLoading ? t("loggingOut") : t("logout")}
         </Button>
       </div>
 
@@ -147,10 +144,8 @@ export function GoalsFullListView() {
       ) : (
         <section className="rounded-md border p-5">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold">Your goals</h2>
-            <Button onClick={() => setGoalEditor({ mode: "create" })}>
-              Create goal
-            </Button>
+            <h2 className="text-lg font-semibold">{t("yourGoals")}</h2>
+            <Button onClick={() => setGoalEditor({ mode: "create" })}>{t("createGoal")}</Button>
           </div>
 
           <GoalsList
@@ -165,8 +160,6 @@ export function GoalsFullListView() {
           />
         </section>
       )}
-
     </main>
   );
 }
-

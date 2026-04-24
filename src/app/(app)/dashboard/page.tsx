@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Zap, LogOut, Loader2, Monitor } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useAuthStore } from "@/store/auth-store";
 import { Button } from "@/components/ui/button";
 
@@ -12,6 +13,7 @@ export default function DashboardPage() {
   const clearAuth = useAuthStore((s) => s.clearAuth);
   const user = useAuthStore((s) => s.user);
   const [loggingOut, setLoggingOut] = useState(false);
+  const t = useTranslations("Dashboard");
 
   const handleSignOut = async () => {
     setLoggingOut(true);
@@ -22,9 +24,14 @@ export default function DashboardPage() {
     }
   };
 
-  const displayName = user
-    ? `${user.firstname ?? ""} ${user.lastname ?? ""}`.trim()
-    : null;
+  const displayName = user ? `${user.firstname ?? ""} ${user.lastname ?? ""}`.trim() : null;
+
+  const features = [
+    t("featureGoals"),
+    t("featurePlanner"),
+    t("featureHabits"),
+    t("featureInsights")
+  ];
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-4">
@@ -36,21 +43,21 @@ export default function DashboardPage() {
 
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            {displayName ? `Welcome back, ${displayName.split(" ")[0]}.` : "Welcome to Fulcrum."}
+            {displayName
+              ? t("welcomeBack", { name: displayName.split(" ")[0] })
+              : t("welcomeGeneric")}
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Your dashboard is on its way — check back soon.
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
       </div>
 
       {/* Placeholder card */}
       <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 text-center shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-          Coming in the next MR
+          {t("comingSoon")}
         </p>
         <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-          {["Goals", "Planner", "Habits", "Insights"].map((label) => (
+          {features.map((label) => (
             <span
               key={label}
               className="rounded-full border border-border bg-muted/50 px-3 py-1 text-xs text-muted-foreground"
@@ -66,7 +73,7 @@ export default function DashboardPage() {
         <Button variant="outline" size="sm" asChild>
           <Link href="/settings/sessions">
             <Monitor className="mr-2 h-4 w-4" />
-            Manage sessions
+            {t("manageSessions")}
           </Link>
         </Button>
 
@@ -82,7 +89,7 @@ export default function DashboardPage() {
           ) : (
             <LogOut className="mr-2 h-4 w-4" />
           )}
-          {loggingOut ? "Signing out…" : "Sign out"}
+          {loggingOut ? t("signingOut") : t("signOut")}
         </Button>
       </div>
     </div>

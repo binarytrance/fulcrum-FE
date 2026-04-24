@@ -1,31 +1,34 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { NextIntlClientProvider } from "next-intl";
+import { getMessages } from "next-intl/server";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Providers } from "@/components/providers";
 import { Toaster } from "@/components/ui/toast";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
-  subsets: ["latin"],
+  subsets: ["latin"]
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
-  subsets: ["latin"],
+  subsets: ["latin"]
 });
 
 export const metadata: Metadata = {
   title: "Fulcrum — Build the life you've designed",
   description:
-    "Fulcrum helps you set goals, build habits, track deep work sessions, and measure what actually matters — so progress becomes inevitable.",
+    "Fulcrum helps you set goals, build habits, track deep work sessions, and measure what actually matters — so progress becomes inevitable."
 };
 
-export default function RootLayout({
-  children,
+export default async function RootLayout({
+  children
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const messages = await getMessages();
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -34,52 +37,52 @@ export default function RootLayout({
             class is on <html> from the very first paint — no white flash.    */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var s=localStorage.getItem('theme');var p=window.matchMedia('(prefers-color-scheme: dark)').matches;if(s==='dark'||(!s&&p)){document.documentElement.classList.add('dark');}}catch(e){}})();`,
+            __html: `(function(){try{var s=localStorage.getItem('theme');var p=window.matchMedia('(prefers-color-scheme: dark)').matches;if(s==='dark'||(!s&&p)){document.documentElement.classList.add('dark');}}catch(e){}})();`
           }}
         />
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <ThemeProvider>
-          <Providers>
-            {/* ── Global ambient background blobs ─────────────────────────────
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <NextIntlClientProvider messages={messages}>
+          <ThemeProvider>
+            <Providers>
+              {/* ── Global ambient background blobs ─────────────────────────────
                 Fixed so they stay in place across all pages and scroll.
                 Opacity is intentionally low — purely decorative depth.        */}
-            <div
-              aria-hidden="true"
-              className="pointer-events-none fixed inset-0 overflow-hidden -z-10"
-            >
-              {/* Top-center — purple/indigo */}
               <div
-                className="absolute -top-64 left-1/2 h-[800px] w-[800px] -translate-x-1/2 rounded-full opacity-[0.15] dark:opacity-[0.07]"
-                style={{
-                  background:
-                    "radial-gradient(circle at center, oklch(0.6 0.25 280) 0%, transparent 70%)",
-                }}
-              />
-              {/* Bottom-right — pink/rose */}
-              <div
-                className="absolute bottom-0 right-0 h-[600px] w-[600px] translate-x-1/3 translate-y-1/4 rounded-full opacity-[0.10] dark:opacity-[0.05]"
-                style={{
-                  background:
-                    "radial-gradient(circle at center, oklch(0.65 0.22 320) 0%, transparent 70%)",
-                }}
-              />
-              {/* Mid-left — emerald/teal */}
-              <div
-                className="absolute top-1/2 left-0 h-[400px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-[0.07] dark:opacity-[0.04]"
-                style={{
-                  background:
-                    "radial-gradient(circle at center, oklch(0.65 0.2 160) 0%, transparent 70%)",
-                }}
-              />
-            </div>
+                aria-hidden="true"
+                className="pointer-events-none fixed inset-0 overflow-hidden -z-10"
+              >
+                {/* Top-center — purple/indigo */}
+                <div
+                  className="absolute -top-64 left-1/2 h-[800px] w-[800px] -translate-x-1/2 rounded-full opacity-[0.15] dark:opacity-[0.07]"
+                  style={{
+                    background:
+                      "radial-gradient(circle at center, oklch(0.6 0.25 280) 0%, transparent 70%)"
+                  }}
+                />
+                {/* Bottom-right — pink/rose */}
+                <div
+                  className="absolute bottom-0 right-0 h-[600px] w-[600px] translate-x-1/3 translate-y-1/4 rounded-full opacity-[0.10] dark:opacity-[0.05]"
+                  style={{
+                    background:
+                      "radial-gradient(circle at center, oklch(0.65 0.22 320) 0%, transparent 70%)"
+                  }}
+                />
+                {/* Mid-left — emerald/teal */}
+                <div
+                  className="absolute top-1/2 left-0 h-[400px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-[0.07] dark:opacity-[0.04]"
+                  style={{
+                    background:
+                      "radial-gradient(circle at center, oklch(0.65 0.2 160) 0%, transparent 70%)"
+                  }}
+                />
+              </div>
 
-            {children}
-            <Toaster />
-          </Providers>
-        </ThemeProvider>
+              {children}
+              <Toaster />
+            </Providers>
+          </ThemeProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

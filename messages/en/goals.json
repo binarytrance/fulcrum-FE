@@ -1,0 +1,57 @@
+{
+  "list": {
+    "pageTitle": "Goals",
+    "signedInAs": "Signed in as {email}",
+    "signedInSession": "Signed in with cookie session",
+    "yourGoals": "Your goals",
+    "createGoal": "Create goal",
+    "logout": "Logout",
+    "loggingOut": "Logging out...",
+    "loadError": "Could not load goals right now.",
+    "goalUpdated": "Goal updated."
+  },
+  "form": {
+    "createTitle": "Create Goal",
+    "editTitle": "Edit Goal",
+    "requiredNote": "Fields marked * are required.",
+    "titleLabel": "Title *",
+    "titlePlaceholder": "e.g. Run a 10k",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Optional (max 1000 chars)",
+    "categoryLabel": "Category *",
+    "priorityLabel": "Priority",
+    "priorityDefault": "Default (Medium)",
+    "deadlineLabel": "Deadline",
+    "estimatedHoursLabel": "Estimated Hours",
+    "estimatedHoursPlaceholder": "Optional",
+    "cancelButton": "Cancel",
+    "saveButton": "Save changes",
+    "createButton": "Create goal",
+    "savingButton": "Saving...",
+    "creatingButton": "Creating...",
+    "titleRequired": "Title is required",
+    "titleMaxLength": "Max 200 characters",
+    "descriptionMaxLength": "Max 1000 characters",
+    "categoryRequired": "Category is required",
+    "estimatedHoursNaN": "Must be a number",
+    "estimatedHoursPositive": "Must be positive",
+    "pastDeadline": "Deadline cannot be in the past.",
+    "readResponseError": "Goal created, but could not read response."
+  },
+  "categories": {
+    "HEALTH_FITNESS": "Health & Fitness",
+    "LEARNING": "Learning",
+    "CAREER": "Career",
+    "FINANCE": "Finance",
+    "RELATIONSHIPS": "Relationships",
+    "PERSONAL_GROWTH": "Personal Growth",
+    "CREATIVITY": "Creativity",
+    "TRAVEL": "Travel",
+    "OTHER": "Other"
+  },
+  "priorities": {
+    "HIGH": "High",
+    "MEDIUM": "Medium",
+    "LOW": "Low"
+  }
+}

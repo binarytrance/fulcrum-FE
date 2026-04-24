@@ -1,47 +1,31 @@
-'use client';
+"use client";
 
-import { Suspense, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as zod from 'zod';
-import Link from 'next/link';
+import { Suspense, useState, useMemo } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as zod from "zod";
+import Link from "next/link";
+import { useTranslations } from "next-intl";
 
-import { useAuthStore } from '@/store/auth-store';
-import { authApiFetch } from '@/utils/auth-api';
-import { completeAuthWithTokens } from '@/utils/complete-auth';
-import { toast } from '@/components/ui/toast';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { useAuthStore } from "@/store/auth-store";
+import { authApiFetch } from "@/utils/auth-api";
+import { completeAuthWithTokens } from "@/utils/complete-auth";
+import { toast } from "@/components/ui/toast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
   FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+  FormMessage
+} from "@/components/ui/form";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-// ─── Schema ───────────────────────────────────────────────────────────────────
-
-const schema = zod.object({
-  token: zod
-    .string()
-    .min(1, 'Verification code is required')
-    .max(32, 'Invalid verification code'),
-});
-
-type FormValues = zod.infer<typeof schema>;
-
-// Backend wraps all responses as { success, message, data? }
 type VerifyEmailApiResponse = {
   success: boolean;
   message: string;
@@ -53,18 +37,29 @@ type VerifyEmailApiResponse = {
 // ─── Inner content (uses useSearchParams) ─────────────────────────────────────
 
 function VerifyEmailContent() {
-  const router    = useRouter();
-  const params    = useSearchParams();
-  const email     = params.get('email') ?? '';
-  const setAuth   = useAuthStore(s => s.setAuth);
+  const router = useRouter();
+  const params = useSearchParams();
+  const email = params.get("email") ?? "";
+  const setAuth = useAuthStore((s) => s.setAuth);
+  const t = useTranslations("Auth.verifyEmail");
 
-  const [resendSent,    setResendSent]    = useState(false);
+  const [resendSent, setResendSent] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
-  const [requestError,  setRequestError]  = useState<string | null>(null);
+  const [requestError, setRequestError] = useState<string | null>(null);
+
+  const schema = useMemo(
+    () =>
+      zod.object({
+        token: zod.string().min(1, t("codeRequired")).max(32, t("codeMaxLength"))
+      }),
+    [t]
+  );
+
+  type FormValues = zod.infer<typeof schema>;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { token: '' },
+    defaultValues: { token: "" }
   });
 
   // ── Submit ─────────────────────────────────────────────────────────────────
@@ -72,38 +67,38 @@ function VerifyEmailContent() {
     setRequestError(null);
 
     try {
-      const response = await authApiFetch('/verify-email', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ email, token }),
+      const response = await authApiFetch("/verify-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, token })
       });
 
       const payload = (await response.json()) as VerifyEmailApiResponse;
 
       if (!response.ok || !payload.success) {
-        setRequestError(payload.message ?? 'Verification failed. Please try again.');
+        setRequestError(payload.message ?? t("errorVerificationFailed"));
         return;
       }
 
       if (!payload.data?.accessToken) {
-        setRequestError('Unexpected response from server. Please try again.');
+        setRequestError(t("errorUnexpected"));
         return;
       }
 
       const { accessToken } = payload.data;
       const user = await completeAuthWithTokens(accessToken);
       setAuth(user, accessToken);
-      toast.success('Email verified!', 'Welcome to Fulcrum.');
-      router.replace('/dashboard');
+      toast.success(t("toastVerifiedTitle"), t("toastVerifiedDesc"));
+      router.replace("/dashboard");
     } catch {
-      setRequestError('Could not verify your email. Please check your connection and try again.');
+      setRequestError(t("errorConnection"));
     }
   });
 
   // ── Resend ─────────────────────────────────────────────────────────────────
   const handleResend = async () => {
     if (!email) {
-      toast.error('Missing email', 'Please go back to sign up and try again.');
+      toast.error(t("toastMissingEmailTitle"), t("toastMissingEmailDesc"));
       return;
     }
 
@@ -111,15 +106,15 @@ function VerifyEmailContent() {
     setResendSent(false);
 
     try {
-      await authApiFetch('/resend-verification', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ email }),
+      await authApiFetch("/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email })
       });
       setResendSent(true);
-      toast.success('Code resent!', `A new code has been sent to ${email}.`);
+      toast.success(t("toastResentTitle"), t("toastResentDesc", { email }));
     } catch {
-      toast.info('Check your inbox', 'If the address is registered a new code will arrive shortly.');
+      toast.info(t("toastCheckInboxTitle"), t("toastCheckInboxDesc"));
       setResendSent(true);
     } finally {
       setResendLoading(false);
@@ -130,7 +125,6 @@ function VerifyEmailContent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
       <div className="w-full max-w-md space-y-6">
-
         {/* Brand */}
         <div className="text-center">
           <Link
@@ -164,15 +158,16 @@ function VerifyEmailContent() {
               </svg>
             </div>
 
-            <CardTitle className="text-2xl font-bold">Check your inbox</CardTitle>
+            <CardTitle className="text-2xl font-bold">{t("title")}</CardTitle>
             <CardDescription className="mt-1 text-sm leading-relaxed">
-              We sent a verification code to{' '}
-              {email ? (
-                <span className="font-medium text-foreground break-all">{email}</span>
-              ) : (
-                'your email address'
-              )}
-              . Enter it below to activate your account.
+              {email
+                ? t.rich("descriptionWithEmail", {
+                    email,
+                    bold: (chunks) => (
+                      <span className="font-medium text-foreground break-all">{chunks}</span>
+                    )
+                  })
+                : t("descriptionNoEmail")}
             </CardDescription>
           </CardHeader>
 
@@ -184,17 +179,16 @@ function VerifyEmailContent() {
                   name="token"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Verification code</FormLabel>
+                      <FormLabel>{t("codeLabel")}</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Enter your verification code"
+                          placeholder={t("codePlaceholder")}
                           autoComplete="one-time-code"
                           autoFocus
                           className="text-center tracking-widest text-base font-mono"
                           {...field}
-                          onChange={e => {
-                            // strip spaces so users can paste with spaces
-                            field.onChange(e.target.value.replace(/\s/g, ''));
+                          onChange={(e) => {
+                            field.onChange(e.target.value.replace(/\s/g, ""));
                           }}
                         />
                       </FormControl>
@@ -209,12 +203,8 @@ function VerifyEmailContent() {
                   </p>
                 )}
 
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={form.formState.isSubmitting}
-                >
-                  {form.formState.isSubmitting ? 'Verifying…' : 'Verify email'}
+                <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                  {form.formState.isSubmitting ? t("submittingButton") : t("submitButton")}
                 </Button>
               </form>
             </Form>
@@ -222,16 +212,14 @@ function VerifyEmailContent() {
             {/* Divider */}
             <div className="my-5 flex items-center gap-3">
               <div className="h-px flex-1 bg-border" />
-              <span className="text-xs text-muted-foreground">Didn&#39;t receive it?</span>
+              <span className="text-xs text-muted-foreground">{t("didntReceive")}</span>
               <div className="h-px flex-1 bg-border" />
             </div>
 
             {/* Resend */}
             <div className="space-y-2 text-center">
               {resendSent ? (
-                <p className="text-sm text-muted-foreground">
-                  ✓ A new code is on its way. Check your spam folder if you don&#39;t see it.
-                </p>
+                <p className="text-sm text-muted-foreground">{t("resendSentMessage")}</p>
               ) : (
                 <Button
                   type="button"
@@ -241,26 +229,26 @@ function VerifyEmailContent() {
                   disabled={resendLoading || !email}
                   className="w-full text-sm"
                 >
-                  {resendLoading ? 'Sending…' : 'Resend verification code'}
+                  {resendLoading ? t("resendingButton") : t("resendButton")}
                 </Button>
               )}
             </div>
 
             {/* Back to sign in */}
             <p className="mt-6 text-center text-sm text-muted-foreground">
-              Wrong address?{' '}
+              {t("wrongAddress")}{" "}
               <Link
                 href="/signup"
                 className="font-medium text-foreground underline underline-offset-4 hover:opacity-80 transition-opacity"
               >
-                Start over
+                {t("startOver")}
               </Link>
-              {' · '}
+              {" · "}
               <Link
                 href="/signin"
                 className="font-medium text-foreground underline underline-offset-4 hover:opacity-80 transition-opacity"
               >
-                Sign in
+                {t("signIn")}
               </Link>
             </p>
           </CardContent>
@@ -279,7 +267,6 @@ export default function VerifyEmailPage() {
         <div className="flex min-h-screen items-center justify-center bg-background">
           <div className="text-center space-y-3">
             <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-border border-t-foreground" />
-            <p className="text-sm text-muted-foreground">Loading…</p>
           </div>
         </div>
       }
