@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import * as zod from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Zap, Mail, Lock, AlertCircle, CheckCircle2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { authApiFetch } from "@/utils/auth-api";
 import { Button } from "@/components/ui/button";
@@ -17,21 +18,10 @@ import {
   FormField,
   FormItem,
   FormLabel,
-  FormMessage,
+  FormMessage
 } from "@/components/ui/form";
 import { GoogleSignupButton } from "./components/GoogleSignupButton";
 import { GitHubSignupButton } from "./components/GitHubSignupButton";
-
-// ─── Schema ───────────────────────────────────────────────────────────────────
-
-const schema = zod.object({
-  firstname: zod.string().min(2, "First name is required"),
-  lastname: zod.string().min(2, "Last name is required"),
-  email: zod.string().email("Enter a valid email address"),
-  password: zod.string().min(6, "Password must be at least 6 characters"),
-});
-
-type FormValues = zod.infer<typeof schema>;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -46,10 +36,25 @@ export default function SignUpPage() {
   const router = useRouter();
   const [requestError, setRequestError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const t = useTranslations("Auth.signup");
+  const tCommon = useTranslations("Common");
+
+  const schema = useMemo(
+    () =>
+      zod.object({
+        firstname: zod.string().min(2, t("firstNameRequired")),
+        lastname: zod.string().min(2, t("lastNameRequired")),
+        email: zod.string().email(t("emailInvalid")),
+        password: zod.string().min(6, t("passwordTooShort"))
+      }),
+    [t]
+  );
+
+  type FormValues = zod.infer<typeof schema>;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { firstname: "", lastname: "", email: "", password: "" },
+    defaultValues: { firstname: "", lastname: "", email: "", password: "" }
   });
 
   const isSubmitting = form.formState.isSubmitting;
@@ -66,26 +71,24 @@ export default function SignUpPage() {
           firstname: values.firstname,
           lastname: values.lastname,
           email: values.email,
-          password: values.password,
-        }),
+          password: values.password
+        })
       });
 
       const payload = (await response.json()) as SignupResponse;
 
       if (!response.ok || !payload.success) {
-        setRequestError(payload.message || "Signup failed. Please try again.");
+        setRequestError(payload.message || t("errorSignupFailed"));
         return;
       }
 
-      setSuccessMessage(
-        payload.message || "Account created! Check your inbox for a verification code.",
-      );
+      setSuccessMessage(payload.message || t("defaultSuccessMessage"));
 
       setTimeout(() => {
         router.push(`/verify-email?email=${encodeURIComponent(values.email)}`);
       }, 1200);
     } catch {
-      setRequestError("Could not complete signup. Please check your connection and try again.");
+      setRequestError(t("errorConnection"));
     }
   });
 
@@ -96,12 +99,8 @@ export default function SignUpPage() {
         <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg">
           <Zap className="h-5 w-5" />
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          Create your account
-        </h1>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          Free while we build — no credit card required.
-        </p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("title")}</h1>
+        <p className="mt-1.5 text-sm text-muted-foreground">{t("subtitle")}</p>
       </div>
 
       {/* ── Card ────────────────────────────────────────────────────────── */}
@@ -116,7 +115,7 @@ export default function SignUpPage() {
         <div className="my-5 flex items-center gap-3">
           <div className="h-px flex-1 bg-border" />
           <span className="text-xs font-medium text-muted-foreground">
-            or continue with email
+            {tCommon("orContinueWithEmail")}
           </span>
           <div className="h-px flex-1 bg-border" />
         </div>
@@ -131,10 +130,10 @@ export default function SignUpPage() {
                 name="firstname"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>First name</FormLabel>
+                    <FormLabel>{t("firstNameLabel")}</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Jane"
+                        placeholder={t("firstNamePlaceholder")}
                         autoComplete="given-name"
                         {...field}
                       />
@@ -148,10 +147,10 @@ export default function SignUpPage() {
                 name="lastname"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Last name</FormLabel>
+                    <FormLabel>{t("lastNameLabel")}</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Smith"
+                        placeholder={t("lastNamePlaceholder")}
                         autoComplete="family-name"
                         {...field}
                       />
@@ -168,13 +167,13 @@ export default function SignUpPage() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>{t("emailLabel")}</FormLabel>
                   <FormControl>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
                         type="email"
-                        placeholder="you@example.com"
+                        placeholder={t("emailPlaceholder")}
                         autoComplete="email"
                         className="pl-9"
                         {...field}
@@ -192,13 +191,13 @@ export default function SignUpPage() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel>{t("passwordLabel")}</FormLabel>
                   <FormControl>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
                         type="password"
-                        placeholder="At least 6 characters"
+                        placeholder={t("passwordPlaceholder")}
                         autoComplete="new-password"
                         className="pl-9"
                         {...field}
@@ -222,9 +221,7 @@ export default function SignUpPage() {
             {successMessage && (
               <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 dark:border-emerald-800/60 dark:bg-emerald-950/40">
                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                <p className="text-sm text-emerald-700 dark:text-emerald-300">
-                  {successMessage}
-                </p>
+                <p className="text-sm text-emerald-700 dark:text-emerald-300">{successMessage}</p>
               </div>
             )}
 
@@ -237,10 +234,10 @@ export default function SignUpPage() {
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating account…
+                  {t("submittingButton")}
                 </>
               ) : (
-                "Create account"
+                t("submitButton")
               )}
             </Button>
           </form>
@@ -249,12 +246,12 @@ export default function SignUpPage() {
 
       {/* ── Footer link ─────────────────────────────────────────────────── */}
       <p className="mt-5 text-center text-sm text-muted-foreground">
-        Already have an account?{" "}
+        {t("footerPrompt")}{" "}
         <Link
           href="/signin"
           className="font-medium text-foreground underline underline-offset-4 transition-opacity hover:opacity-80"
         >
-          Sign in
+          {t("footerLink")}
         </Link>
       </p>
     </>

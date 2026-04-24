@@ -1,0 +1,13 @@
+{
+  "welcomeBack": "Welcome back, {name}.",
+  "welcomeGeneric": "Welcome to Fulcrum.",
+  "subtitle": "Your dashboard is on its way — check back soon.",
+  "comingSoon": "Coming in the next MR",
+  "featureGoals": "Goals",
+  "featurePlanner": "Planner",
+  "featureHabits": "Habits",
+  "featureInsights": "Insights",
+  "manageSessions": "Manage sessions",
+  "signOut": "Sign out",
+  "signingOut": "Signing out…"
+}

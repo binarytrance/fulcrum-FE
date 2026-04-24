@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import * as zod from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Zap, Mail, Lock, AlertCircle } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { useAuthStore } from "@/store/auth-store";
 import { authApiFetch } from "@/utils/auth-api";
@@ -19,19 +20,10 @@ import {
   FormField,
   FormItem,
   FormLabel,
-  FormMessage,
+  FormMessage
 } from "@/components/ui/form";
 import { GoogleSigninButton } from "./components/GoogleSigninButton";
 import { GitHubSigninButton } from "./components/GitHubSigninButton";
-
-// ─── Schema ───────────────────────────────────────────────────────────────────
-
-const schema = zod.object({
-  email: zod.string().email("Please enter a valid email"),
-  password: zod.string().min(6, "Password must be at least 6 characters"),
-});
-
-type FormValues = zod.infer<typeof schema>;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -49,10 +41,23 @@ export default function SignInPage() {
   const router = useRouter();
   const setAuth = useAuthStore((s) => s.setAuth);
   const [requestError, setRequestError] = useState<string | null>(null);
+  const t = useTranslations("Auth.signin");
+  const tCommon = useTranslations("Common");
+
+  const schema = useMemo(
+    () =>
+      zod.object({
+        email: zod.string().email(t("emailInvalid")),
+        password: zod.string().min(6, t("passwordTooShort"))
+      }),
+    [t]
+  );
+
+  type FormValues = zod.infer<typeof schema>;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { email: "", password: "" }
   });
 
   const isSubmitting = form.formState.isSubmitting;
@@ -64,18 +69,18 @@ export default function SignInPage() {
       const response = await authApiFetch("/signin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: values.email, password: values.password }),
+        body: JSON.stringify({ email: values.email, password: values.password })
       });
 
       const payload = (await response.json()) as SigninApiResponse;
 
       if (!response.ok || !payload.success) {
-        setRequestError(payload.message ?? "Sign in failed. Please try again.");
+        setRequestError(payload.message ?? t("errorSignInFailed"));
         return;
       }
 
       if (!payload.data?.accessToken) {
-        setRequestError("Unexpected response from server. Please try again.");
+        setRequestError(t("errorUnexpected"));
         return;
       }
 
@@ -84,7 +89,7 @@ export default function SignInPage() {
       setAuth(user, accessToken);
       router.replace("/dashboard");
     } catch {
-      setRequestError("Could not connect to the server. Please try again.");
+      setRequestError(t("errorConnection"));
     }
   });
 
@@ -96,18 +101,13 @@ export default function SignInPage() {
           <Zap className="h-6 w-6" />
         </div>
 
-        <h1 className="text-2xl font-bold tracking-tight">
-          Welcome back
-        </h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
 
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          Sign in to your Fulcrum account
-        </p>
+        <p className="mt-1.5 text-sm text-muted-foreground">{t("subtitle")}</p>
       </div>
 
       {/* ── Card ────────────────────────────────────────────────────────── */}
       <div className="rounded-2xl border border-border bg-card p-7 shadow-sm">
-
         {/* OAuth buttons */}
         <div className="space-y-2.5">
           <GoogleSigninButton />
@@ -118,7 +118,7 @@ export default function SignInPage() {
         <div className="my-5 flex items-center gap-3">
           <div className="h-px flex-1 bg-border" />
           <span className="text-xs font-medium text-muted-foreground">
-            or continue with email
+            {tCommon("orContinueWithEmail")}
           </span>
           <div className="h-px flex-1 bg-border" />
         </div>
@@ -126,19 +126,18 @@ export default function SignInPage() {
         {/* Email / password form */}
         <Form {...form}>
           <form onSubmit={onSubmit} className="space-y-4" noValidate>
-
             <FormField
               control={form.control}
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>{t("emailLabel")}</FormLabel>
                   <FormControl>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
                         type="email"
-                        placeholder="you@example.com"
+                        placeholder={t("emailPlaceholder")}
                         autoComplete="email"
                         className="pl-9"
                         {...field}
@@ -156,9 +155,9 @@ export default function SignInPage() {
               render={({ field }) => (
                 <FormItem>
                   <div className="flex items-center justify-between">
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel>{t("passwordLabel")}</FormLabel>
                     <span className="cursor-default select-none text-xs text-muted-foreground">
-                      Forgot password?
+                      {t("forgotPassword")}
                     </span>
                   </div>
                   <FormControl>
@@ -166,7 +165,7 @@ export default function SignInPage() {
                       <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
                         type="password"
-                        placeholder="••••••••"
+                        placeholder={t("passwordPlaceholder")}
                         autoComplete="current-password"
                         className="pl-9"
                         {...field}
@@ -186,19 +185,14 @@ export default function SignInPage() {
               </div>
             )}
 
-            <Button
-              type="submit"
-              className="w-full rounded-xl"
-              size="lg"
-              disabled={isSubmitting}
-            >
+            <Button type="submit" className="w-full rounded-xl" size="lg" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in…
+                  {t("submittingButton")}
                 </>
               ) : (
-                "Sign In"
+                t("submitButton")
               )}
             </Button>
           </form>
@@ -207,12 +201,12 @@ export default function SignInPage() {
 
       {/* ── Footer link ─────────────────────────────────────────────────── */}
       <p className="mt-5 text-center text-sm text-muted-foreground">
-        Don&apos;t have an account?{" "}
+        {t("footerPrompt")}{" "}
         <Link
           href="/signup"
           className="font-medium text-foreground underline underline-offset-4 transition-opacity hover:opacity-80"
         >
-          Sign up free
+          {t("footerLink")}
         </Link>
       </p>
     </>
