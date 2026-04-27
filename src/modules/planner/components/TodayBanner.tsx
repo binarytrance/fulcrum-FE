@@ -79,12 +79,12 @@ export function TodayBanner() {
               <Clock className="h-3.5 w-3.5" />
               {t("logSession")}
             </Button>
-            <Button variant="outline" size="sm" className="gap-2" asChild>
+            {/* <Button variant="outline" size="sm" className="gap-2" asChild>
               <Link href="/goals">
                 <Target className="h-3.5 w-3.5" />
                 {t("reviewGoals")}
               </Link>
-            </Button>
+            </Button> */}
           </div>
         </div>
       </div>
