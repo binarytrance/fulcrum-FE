@@ -1,7 +1,6 @@
 "use client";
 
-import { TodayBanner } from "@/modules/planner/components/TodayBanner";
-import { MetricsRow } from "@/modules/planner/components/MetricsRow";
+import { TodayBanner, MetricsRow } from "@/modules/planner";
 
 export default function DashboardPage() {
   return (

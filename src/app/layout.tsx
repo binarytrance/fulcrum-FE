@@ -6,6 +6,7 @@ import { getMessages } from "next-intl/server";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Providers } from "@/components/providers";
 import { Toaster } from "@/components/ui/toast";
+import NextTopLoader from "nextjs-toploader";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -44,6 +45,7 @@ export default async function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider>
+            <NextTopLoader color="#8B5CF6" shadow="0 0 10px #8B5CF6,0 0 5px #7C3AED" showSpinner={false} />
             <Providers>
               {/* ── Global ambient background blobs ─────────────────────────────
                 Fixed so they stay in place across all pages and scroll.

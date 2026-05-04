@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { CalendarDays, Timer, Clock, Target } from "lucide-react";
+import { CalendarDays, Timer, Clock } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { useAuthStore } from "@/store/auth-store";
+import { formatLongDate } from "@/lib/date";
 import { Button } from "@/components/ui/button";
-import { getDailySnippet } from "@/modules/motivation/knowledge";
+// import { getDailySnippet } from "@/modules/motivation/knowledge";
 
 function getGreetingKey(
   hour: number
@@ -29,16 +29,9 @@ export function TodayBanner() {
 
   const greeting = now ? t(getGreetingKey(now.getHours())) : null;
   const firstName = user?.firstname ?? "";
-  const snippet = now ? getDailySnippet(now) : null;
+  // const snippet = now ? getDailySnippet(now) : null;
 
-  const dateStr = now
-    ? new Intl.DateTimeFormat("en-US", {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-        year: "numeric"
-      }).format(now)
-    : null;
+  const dateStr = now ? formatLongDate(now) : null;
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card px-6 py-5">

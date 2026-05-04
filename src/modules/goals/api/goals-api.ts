@@ -142,18 +142,6 @@ export async function getGoals(): Promise<{
   return { response, payload };
 }
 
-export function getApiMessage(message: unknown): string {
-  if (!message) return "Something went wrong.";
-  if (typeof message === "string") return message;
-
-  if (typeof message === "object") {
-    const maybe = message as { message?: unknown };
-    if (typeof maybe.message === "string") return maybe.message;
-  }
-
-  return "Something went wrong.";
-}
-
 export function getValidationFieldErrors(message: unknown): Record<string, string[]> {
   if (!message || typeof message !== "object") return {};
 

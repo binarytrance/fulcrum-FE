@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import { useAuthStore } from "@/store/auth-store";
 import {
-  getApiMessage,
+
   getGoals,
   updateGoal,
   type GoalResponse,
@@ -24,6 +24,7 @@ export function GoalsFullListView() {
   const user = useAuthStore((state) => state.user);
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const t = useTranslations("Goals.list");
+  const tCommon = useTranslations("Common");
 
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [goalEditor, setGoalEditor] = useState<GoalEditorState>(null);
@@ -42,17 +43,8 @@ export function GoalsFullListView() {
 
     try {
       const { response, payload } = await getGoals();
-      if (response.status === 401) {
-        clearAuth();
-        router.replace("/signin");
-        return;
-      }
-      if (!response.ok) {
-        setGoalsError(t("loadError"));
-        return;
-      }
 
-      if (!payload || !("success" in payload) || !payload.success) {
+      if (!response.ok || !payload || !("success" in payload) || !payload.success) {
         setGoalsError(t("loadError"));
         return;
       }
@@ -63,7 +55,7 @@ export function GoalsFullListView() {
     } finally {
       setGoalsLoading(false);
     }
-  }, [clearAuth, router, t]);
+  }, [t]);
 
   useEffect(() => {
     void fetchGoals();
@@ -86,14 +78,8 @@ export function GoalsFullListView() {
         status: "COMPLETED"
       });
 
-      if (response.status === 401) {
-        clearAuth();
-        router.replace("/signin");
-        return;
-      }
-
       if (!response.ok) {
-        toast.error(getApiMessage(payload && "message" in payload ? payload.message : undefined));
+        toast.error(tCommon("genericError"));
         return;
       }
 
@@ -104,6 +90,8 @@ export function GoalsFullListView() {
       }
 
       await fetchGoals();
+    } catch {
+      toast.error(tCommon("genericError"));
     } finally {
       setCompletingIds((prev) => {
         const next = new Set(prev);

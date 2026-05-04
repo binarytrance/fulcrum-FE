@@ -7,6 +7,7 @@ import {
   CalendarDays,
   Target,
   Activity,
+  CheckSquare,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -37,8 +38,9 @@ function NavContent({ collapsed, onClose, onToggleCollapse }: NavContentProps) {
 
   const navItems = [
     { href: "/dashboard", icon: <CalendarDays className="h-4 w-4" />, label: t("today") },
+    { href: "/tasks", icon: <CheckSquare className="h-4 w-4" />, label: t("tasks") },
     { href: "/goals", icon: <Target className="h-4 w-4" />, label: t("goals") },
-    { href: "/habits", icon: <Activity className="h-4 w-4" />, label: t("habits") }
+    { href: "/habits", icon: <Activity className="h-4 w-4" />, label: t("habits") },
   ];
 
   const firstname = user?.firstname ?? "";

@@ -187,10 +187,17 @@ function buildHeaders(
  *   `refreshAccessToken()`, which is locked so concurrent 401s share
  *   one refresh call.
  * - If the refresh succeeds the original request is retried once with the
- *   new access token.
- * - If the refresh itself fails the in-memory access token is cleared and
- *   `Error(SESSION_EXPIRED)` is thrown so callers / global error
- *   boundaries can redirect to sign-in.
+ *   new access token, transparently to the caller.
+ * - If the refresh fails it means both tokens are expired/revoked and the
+ *   user has no valid session. In that case:
+ *   1. A `session-expired` DOM event is dispatched — AppShell listens for
+ *      this and calls clearAuth() + router.replace('/signin').
+ *   2. This function's promise intentionally hangs forever (never resolves
+ *      or rejects), so the caller stays in its current loading state rather
+ *      than flashing an error. AppShell's navigation unmounts the caller
+ *      within ~100ms, at which point the promise and its closure are GC'd.
+ *   Callers do not need to handle this case — no SESSION_EXPIRED error will
+ *   ever reach a catch block.
  *
  * @param path  API path relative to the base URL, e.g. `/goals`
  * @param init  Standard `RequestInit` options (method, body, headers, ...)
@@ -223,7 +230,9 @@ export async function apiFetch(
   const newToken = await refreshAccessToken();
 
   if (!newToken) {
-    throw new Error("SESSION_EXPIRED");
+    window.dispatchEvent(new CustomEvent("session-expired"));
+    await new Promise(() => {}); // hang until AppShell redirects and unmounts the caller
+    throw new Error("SESSION_EXPIRED"); // unreachable — satisfies TypeScript
   }
 
   // Retry the original request with the fresh access token
