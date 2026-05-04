@@ -20,7 +20,6 @@ import { DateTimeInput } from '@/components/ui/date-time-input';
 import {
     createGoal,
     updateGoal,
-    getApiMessage,
     getValidationFieldErrors,
     GOAL_CATEGORIES,
     GOAL_PRIORITIES,
@@ -63,6 +62,7 @@ export function CreateGoalForm({
     const t = useTranslations('Goals.form');
     const tCat = useTranslations('Goals.categories');
     const tPri = useTranslations('Goals.priorities');
+    const tCommon = useTranslations('Common');
 
     const categoryLabels: Record<GoalCategory, string> = {
         HEALTH_FITNESS: tCat('HEALTH_FITNESS'),
@@ -186,9 +186,7 @@ export function CreateGoalForm({
                 }
             }
 
-            setSubmitError(
-                getApiMessage(payload && 'message' in payload ? payload.message : undefined)
-            );
+            setSubmitError(tCommon("genericError"));
             return;
         }
 

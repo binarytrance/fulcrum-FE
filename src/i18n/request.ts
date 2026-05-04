@@ -1,3 +1,10 @@
+// next-intl per-request configuration.
+// Runs on the server for every request that needs translations.
+// Reads all JSON files from messages/en/ and merges them into a single
+// messages object, namespaced by filename with a capitalised key —
+// e.g. messages/en/nav.json becomes { Nav: { ... } },
+// messages/en/today.json becomes { Today: { ... } }.
+// The locale is hardcoded to "en" until multi-locale support is added.
 import { getRequestConfig } from "next-intl/server";
 import fs from "fs";
 import path from "path";

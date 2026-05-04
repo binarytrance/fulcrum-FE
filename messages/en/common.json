@@ -2,5 +2,6 @@
   "cancel": "Cancel",
   "loading": "Loading…",
   "orContinueWithEmail": "or continue with email",
-  "logoAlt": "Fulcrum"
+  "logoAlt": "Fulcrum",
+  "genericError": "Something went wrong. Please try again."
 }
