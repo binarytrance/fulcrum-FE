@@ -1,14 +1,15 @@
 "use client";
 
-import { Play, ClipboardList, Plus } from "lucide-react";
+import { Play, ClipboardList } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ActionMenu } from "@/components/ui/action-menu";
+import { Spinner } from "@/components/ui/spinner";
+import type { DailyInsightsFocusSessions } from "@/modules/insights/types";
 
-// TODO: wire to focus sessions API
-const PLACEHOLDER = {
-  todayMinutes: 0,
-  yesterdayMinutes: 0,
+type Props = {
+  data: DailyInsightsFocusSessions | null;
+  loading: boolean;
 };
 
 function formatDuration(minutes: number): string {
@@ -20,18 +21,16 @@ function formatDuration(minutes: number): string {
   return `${h}h ${m}m`;
 }
 
-export function FocusTimeSnapshot() {
+export function FocusTimeSnapshot({ data, loading }: Props) {
   const router = useRouter();
-  const { todayMinutes, yesterdayMinutes } = PLACEHOLDER;
-
-  const delta = todayMinutes - yesterdayMinutes;
-  const deltaAbs = Math.abs(delta);
-  const deltaStr = deltaAbs === 0 ? null : `${delta > 0 ? "↑" : "↓"} ${formatDuration(deltaAbs)} vs yesterday`;
 
   const menuItems = [
     { label: "Start focus session", icon: <Play className="h-3.5 w-3.5" />, onClick: () => router.push("/focus") },
     { label: "Log past session", icon: <ClipboardList className="h-3.5 w-3.5" />, onClick: () => {} },
   ];
+
+  const minutes = data?.totalLoggedMinutes ?? 0;
+  const sessions = data?.sessionCount ?? 0;
 
   return (
     <div className="relative flex flex-col gap-3 rounded-2xl border border-border/60 bg-card p-4">
@@ -40,25 +39,27 @@ export function FocusTimeSnapshot() {
         <ActionMenu
           trigger={
             <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground">
-              <Plus className="h-3.5 w-3.5" />
+              <Play className="h-3.5 w-3.5" />
             </Button>
           }
           items={menuItems}
         />
       </div>
 
-      <div>
-        <p className="text-2xl font-bold tracking-tight text-foreground">
-          {formatDuration(todayMinutes)}
-        </p>
-        {deltaStr ? (
-          <p className={`mt-0.5 text-xs ${delta > 0 ? "text-emerald-500" : "text-rose-500"}`}>
-            {deltaStr}
+      {loading ? (
+        <div className="flex flex-1 items-center justify-center">
+          <Spinner />
+        </div>
+      ) : (
+        <div>
+          <p className="text-2xl font-bold tracking-tight text-foreground">
+            {formatDuration(minutes)}
           </p>
-        ) : (
-          <p className="mt-0.5 text-xs text-muted-foreground">no sessions yet</p>
-        )}
-      </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {sessions === 0 ? "no sessions yet" : `${sessions} session${sessions === 1 ? "" : "s"} today`}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api";
-import type { TaskResponse, PaginatedTasks, TasksQueryParams } from "../types";
+import type { TaskResponse, PaginatedTasks, TasksQueryParams, TaskStatus, TaskPriority, TaskType } from "../types";
 
 type ApiSuccess<T> = { success: true; message: string; data: T };
 type ApiFailure = { success: false; message: unknown };
@@ -22,6 +22,63 @@ export async function getTasks(params: TasksQueryParams = {}): Promise<{
   let payload: ApiSuccess<PaginatedTasks> | ApiFailure | undefined;
   try {
     payload = (await response.json()) as ApiSuccess<PaginatedTasks> | ApiFailure;
+  } catch {
+    payload = undefined;
+  }
+
+  return { response, payload };
+}
+
+type CreateTaskInput = {
+  title: string;
+  scheduledFor?: string;
+  goalId?: string;
+  priority?: TaskPriority;
+  estimatedDuration?: number;
+  type?: TaskType;
+};
+
+type UpdateTaskInput = Partial<{
+  title: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  scheduledFor: string | null;
+  estimatedDuration: number;
+}>;
+
+export async function createTask(input: CreateTaskInput): Promise<{
+  response: Response;
+  payload?: ApiSuccess<TaskResponse> | ApiFailure;
+}> {
+  const response = await apiFetch("/tasks", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+
+  let payload: ApiSuccess<TaskResponse> | ApiFailure | undefined;
+  try {
+    payload = (await response.json()) as ApiSuccess<TaskResponse> | ApiFailure;
+  } catch {
+    payload = undefined;
+  }
+
+  return { response, payload };
+}
+
+export async function updateTask(
+  id: string,
+  input: UpdateTaskInput,
+): Promise<{ response: Response; payload?: ApiSuccess<TaskResponse> | ApiFailure }> {
+  const response = await apiFetch(`/tasks/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+
+  let payload: ApiSuccess<TaskResponse> | ApiFailure | undefined;
+  try {
+    payload = (await response.json()) as ApiSuccess<TaskResponse> | ApiFailure;
   } catch {
     payload = undefined;
   }

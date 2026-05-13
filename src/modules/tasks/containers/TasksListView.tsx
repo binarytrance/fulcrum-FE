@@ -56,9 +56,9 @@ export function TasksListView() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 p-6">
+    <div className="mx-auto flex h-full max-w-3xl flex-col gap-4 p-6">
       {/* Header */}
-      <div>
+      <div className="shrink-0">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Tasks</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {data ? `${data.total} task${data.total === 1 ? "" : "s"}` : ""}
@@ -66,7 +66,7 @@ export function TasksListView() {
       </div>
 
       {/* Status filter tabs */}
-      <div className="flex gap-1 rounded-lg border border-border/60 bg-muted/40 p-1">
+      <div className="shrink-0 flex gap-1 rounded-lg border border-border/60 bg-muted/40 p-1">
         {STATUS_FILTERS.map((f) => (
           <button
             key={f.label}
@@ -84,12 +84,14 @@ export function TasksListView() {
       </div>
 
       {/* List */}
-      <TasksList
-        loading={loading}
-        error={error}
-        data={data}
-        onPageChange={(p) => setPage(p)}
-      />
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <TasksList
+          loading={loading}
+          error={error}
+          data={data}
+          onPageChange={(p) => setPage(p)}
+        />
+      </div>
     </div>
   );
 }

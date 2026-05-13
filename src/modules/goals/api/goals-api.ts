@@ -20,31 +20,33 @@ export type GoalPriority = (typeof GOAL_PRIORITIES)[number];
 export type GoalProgress = {
   totalTasks: number;
   completedTasks: number;
-  completionPercent: number;
-  totalLoggedMinutes: number;
-  estimatedMinutes: number;
+  totalLoggedMs: number;
+  /** 0–100 */
+  score: number;
   lastComputedAt: string;
 };
 
 export type GoalResponse = {
   id: string;
   userId: string;
-  parentGoalId?: string | null;
+  parentGoalId: string | null;
   title: string;
-  description?: string | null;
+  description: string | null;
   category: GoalCategory;
   status: string;
   priority: GoalPriority;
-  deadline?: string | null;
-  estimatedHours?: number | null;
+  estimatedEndDate: string | null;
+  /** milliseconds */
+  estimatedDuration: number | null;
+  estimatedStartDate: string | null;
+  actualStartDate: string | null;
+  actualEndDate: string | null;
+  isReadyToComplete: boolean;
+  isOverdue: boolean;
   level: number;
   progress: GoalProgress;
   createdAt: string;
   updatedAt: string;
-};
-
-export type GoalTreeNode = GoalResponse & {
-  children: GoalTreeNode[];
 };
 
 export type CreateGoalInput = {
@@ -52,7 +54,9 @@ export type CreateGoalInput = {
   description?: string;
   category: GoalCategory;
   priority?: GoalPriority;
+  /** ISO date string — converted to estimatedEndDate on the way out */
   deadline?: string;
+  /** hours — converted to ms on the way out */
   estimatedHours?: number;
   parentGoalId?: string;
 };
@@ -63,7 +67,9 @@ export type UpdateGoalInput = Partial<{
   category: GoalCategory;
   status: string;
   priority: GoalPriority;
+  /** ISO date string — converted to estimatedEndDate on the way out */
   deadline: string | null;
+  /** hours — converted to ms on the way out */
   estimatedHours: number | null;
 }>;
 
@@ -81,10 +87,11 @@ type ApiFailure = {
 export async function createGoal(
   input: CreateGoalInput
 ): Promise<{ response: Response; payload?: ApiSuccess<GoalResponse> | ApiFailure }> {
-  const { deadline, ...rest } = input;
+  const { deadline, estimatedHours, ...rest } = input;
   const body = {
     ...rest,
     ...(deadline ? { estimatedEndDate: new Date(deadline).toISOString() } : {}),
+    ...(estimatedHours != null ? { estimatedDuration: estimatedHours * 3_600_000 } : {}),
   };
 
   const response = await apiFetch("/goals", {
@@ -107,10 +114,12 @@ export async function updateGoal(
   id: string,
   input: UpdateGoalInput
 ): Promise<{ response: Response; payload?: ApiSuccess<GoalResponse> | ApiFailure }> {
-  const { deadline, ...rest } = input;
+  const { deadline, estimatedHours, ...rest } = input;
   const body: Record<string, unknown> = { ...rest };
   if (deadline === null) body.estimatedEndDate = null;
   else if (deadline) body.estimatedEndDate = new Date(deadline).toISOString();
+  if (estimatedHours === null) body.estimatedDuration = null;
+  else if (estimatedHours != null) body.estimatedDuration = estimatedHours * 3_600_000;
 
   const response = await apiFetch(`/goals/${id}`, {
     method: "PATCH",
@@ -128,14 +137,33 @@ export async function updateGoal(
   return { response, payload };
 }
 
-export async function getGoals(): Promise<{
+export type PaginatedGoals = {
+  items: GoalResponse[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+export type GoalsQueryParams = {
+  status?: string;
+  limit?: number;
+  page?: number;
+};
+
+export async function getGoals(params: GoalsQueryParams = {}): Promise<{
   response: Response;
-  payload?: ApiSuccess<GoalTreeNode[]> | ApiFailure;
+  payload?: ApiSuccess<PaginatedGoals> | ApiFailure;
 }> {
-  const response = await apiFetch("/goals", { method: "GET" });
-  let payload: ApiSuccess<GoalTreeNode[]> | ApiFailure | undefined;
+  const query = new URLSearchParams();
+  if (params.status) query.set("status", params.status);
+  if (params.limit) query.set("limit", String(params.limit));
+  if (params.page) query.set("page", String(params.page));
+  const qs = query.toString();
+  const response = await apiFetch(`/goals${qs ? `?${qs}` : ""}`, { method: "GET" });
+  let payload: ApiSuccess<PaginatedGoals> | ApiFailure | undefined;
   try {
-    payload = (await response.json()) as ApiSuccess<GoalTreeNode[]> | ApiFailure;
+    payload = (await response.json()) as ApiSuccess<PaginatedGoals> | ApiFailure;
   } catch {
     payload = undefined;
   }

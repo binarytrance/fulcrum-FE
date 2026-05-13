@@ -21,7 +21,6 @@ export function ArcRing({ ratio, size = 56, strokeWidth = 5, className }: ArcRin
       className={className}
       aria-hidden="true"
     >
-      {/* Track */}
       <circle
         cx={cx}
         cy={cy}
@@ -30,7 +29,6 @@ export function ArcRing({ ratio, size = 56, strokeWidth = 5, className }: ArcRin
         strokeWidth={strokeWidth}
         className="stroke-muted"
       />
-      {/* Fill */}
       <circle
         cx={cx}
         cy={cy}

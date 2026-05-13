@@ -112,12 +112,12 @@ export function CreateGoalForm({
         description: initialGoal?.description ?? '',
         category: initialGoal?.category ?? 'HEALTH_FITNESS',
         priority: initialGoal?.priority ?? undefined,
-        deadline: initialGoal?.deadline
-            ? toLocalDateTimeInputValue(new Date(initialGoal.deadline))
+        deadline: initialGoal?.estimatedEndDate
+            ? toLocalDateTimeInputValue(new Date(initialGoal.estimatedEndDate))
             : '',
         estimatedHours:
-            typeof initialGoal?.estimatedHours === 'number'
-                ? String(initialGoal.estimatedHours)
+            initialGoal?.estimatedDuration != null
+                ? String(initialGoal.estimatedDuration / 3_600_000)
                 : ''
     };
 
@@ -131,8 +131,8 @@ export function CreateGoalForm({
 
         const deadlineMs = values.deadline?.trim() ? new Date(values.deadline).getTime() : null;
         if (deadlineMs !== null && deadlineMs < Date.now()) {
-            const initialDeadlineMs = initialGoal?.deadline
-                ? new Date(initialGoal.deadline).getTime()
+            const initialDeadlineMs = initialGoal?.estimatedEndDate
+                ? new Date(initialGoal.estimatedEndDate).getTime()
                 : null;
             const isUnchangedPastDeadline = mode === 'edit' && initialDeadlineMs === deadlineMs;
             if (!isUnchangedPastDeadline) {
