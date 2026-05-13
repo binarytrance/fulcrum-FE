@@ -4,16 +4,7 @@ import { Play, ClipboardList } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import {
-  Dialog,
-  DialogTrigger,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import type { FocusSessionResponse } from "@/modules/focus/types";
-
-const DISPLAY_LIMIT = 3;
 
 type Props = {
   sessions: FocusSessionResponse[] | null;
@@ -45,7 +36,7 @@ function SessionRow({ session }: { session: FocusSessionResponse }) {
   return (
     <div className="flex items-center justify-between text-xs">
       <div className="flex items-center gap-1.5">
-        <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
         <span className="text-muted-foreground">{formatSessionTime(session.startedAt)}</span>
       </div>
       <span className="font-medium tabular-nums text-foreground">
@@ -59,12 +50,10 @@ export function FocusTodayCard({ sessions, loading }: Props) {
   const router = useRouter();
   const list = sessions ?? [];
   const totalMinutes = list.reduce((sum, s) => sum + msToMinutes(s.durationMs), 0);
-  const visible = list.slice(0, DISPLAY_LIMIT);
-  const hiddenCount = list.length - DISPLAY_LIMIT;
 
   return (
-    <div className="flex h-full flex-col gap-3 rounded-2xl border border-border/60 bg-card p-4">
-      <span className="text-xs font-medium text-muted-foreground">Focus sessions</span>
+    <div className="flex h-full flex-col gap-3 overflow-hidden rounded-2xl border border-border/60 bg-card p-4">
+      <span className="shrink-0 text-xs font-medium text-muted-foreground">Focus sessions</span>
 
       {loading && (
         <div className="flex flex-1 items-center justify-center">
@@ -80,52 +69,21 @@ export function FocusTodayCard({ sessions, loading }: Props) {
       )}
 
       {!loading && list.length > 0 && (
-        <div className="flex flex-col gap-1.5">
-          {visible.map((s) => (
-            <SessionRow key={s.id} session={s} />
-          ))}
-
-          {hiddenCount > 0 ? (
-            <Dialog>
-              <div className="mt-0.5 flex items-center justify-between border-t border-border/40 pt-1.5">
-                <DialogTrigger asChild>
-                  <button className="text-xs text-muted-foreground transition-colors hover:text-foreground">
-                    +{hiddenCount} more
-                  </button>
-                </DialogTrigger>
-                <span className="text-xs font-semibold tabular-nums text-foreground">
-                  {formatDuration(totalMinutes)} today
-                </span>
-              </div>
-
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Today&apos;s focus sessions</DialogTitle>
-                </DialogHeader>
-                <div className="flex flex-col gap-1.5">
-                  {list.map((s) => (
-                    <SessionRow key={s.id} session={s} />
-                  ))}
-                  <div className="mt-1 flex justify-between border-t border-border/40 pt-2">
-                    <span className="text-xs text-muted-foreground">Total</span>
-                    <span className="text-xs font-semibold tabular-nums text-foreground">
-                      {formatDuration(totalMinutes)}
-                    </span>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-          ) : (
-            <div className="mt-0.5 flex justify-end border-t border-border/40 pt-1.5">
-              <span className="text-xs font-semibold tabular-nums text-foreground">
-                {formatDuration(totalMinutes)} today
-              </span>
-            </div>
-          )}
-        </div>
+        <>
+          <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto">
+            {list.map((s) => (
+              <SessionRow key={s.id} session={s} />
+            ))}
+          </div>
+          <div className="shrink-0 flex justify-end border-t border-border/40 pt-1.5">
+            <span className="text-xs font-semibold tabular-nums text-foreground">
+              {formatDuration(totalMinutes)} today
+            </span>
+          </div>
+        </>
       )}
 
-      <div className="mt-auto flex gap-2">
+      <div className="mt-auto shrink-0 flex gap-2">
         <Button
           variant="outline"
           size="sm"
