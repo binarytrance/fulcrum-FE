@@ -133,17 +133,34 @@
   );
 }
 
-/* ─── Bento grid: named template areas (desktop only) ───────────────────────
-   Columns + gap are handled by Tailwind (grid gap-3 lg:grid-cols-3).
-   grid-template-areas can't be expressed as a Tailwind arbitrary value        */
+
+@keyframes ping-soft {
+  0%   { transform: scale(1);   opacity: 0.55; }
+  100% { transform: scale(2.8); opacity: 0; }
+}
+.animate-ping-soft {
+  animation: ping-soft 3s ease-out infinite;
+}
+
+/* ─── Today cards bento grid ────────────────────────────────────────────────
+   Mobile: flex-col (see TodayCardsGrid.tsx).
+   Desktop default (< 768px viewport height): fixed row heights, page scrolls.
+   Desktop tall (>= 768px viewport height): rows fill available space, no scroll. */
 @media (min-width: 1024px) {
   .today-cards-grid {
-    grid-template-rows: minmax(220px, 1fr) minmax(180px, 1fr) auto;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 300px 220px auto;
     grid-template-areas:
       "tasks tasks habits"
       "tasks tasks focus"
       "goal  goal  goal";
   }
+}
+
+@media (min-width: 1024px) and (min-height: 768px) {
+  .today-page         { height: 100%; min-height: 0; }
+  .today-grid-wrapper { flex: 1; min-height: 0; }
+  .today-cards-grid   { height: 100%; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) auto; }
 }
 
 .dark .auth-panel-bg {

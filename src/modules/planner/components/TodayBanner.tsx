@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarDays, Timer, Clock } from "lucide-react";
+import { CalendarDays, Timer, Clock, Flame } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { useAuthStore } from "@/store/auth-store";
-import { formatLongDate } from "@/lib/date";
+import { formatLongDate, formatShortDate } from "@/lib/date";
 import { Button } from "@/components/ui/button";
+import type { AppStreak } from "@/modules/insights/types";
 // import { getDailySnippet } from "@/modules/motivation/knowledge";
 
 function getGreetingKey(
@@ -18,7 +19,12 @@ function getGreetingKey(
   return "greetingNight";
 }
 
-export function TodayBanner() {
+type Props = {
+  streak: AppStreak | null;
+  loading: boolean;
+};
+
+export function TodayBanner({ streak, loading }: Props) {
   const t = useTranslations("Today");
   const user = useAuthStore((s) => s.user);
   const [now, setNow] = useState<Date | null>(null);
@@ -31,7 +37,8 @@ export function TodayBanner() {
   const firstName = user?.firstname ?? "";
   // const snippet = now ? getDailySnippet(now) : null;
 
-  const dateStr = now ? formatLongDate(now) : null;
+  const dateShort = now ? formatShortDate(now) : null;
+  const dateLong = now ? formatLongDate(now) : null;
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card px-6 py-5">
@@ -45,24 +52,25 @@ export function TodayBanner() {
         }}
       />
 
-      <div className="relative flex items-start justify-between gap-4">
-        {/* Left — greeting + date + actions */}
-        <div className="space-y-3.5">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-              {greeting ?? "Welcome"}
-              {firstName ? `, ${firstName}` : ""}! 👋
-            </h1>
+      <div className="relative flex flex-col gap-3.5">
+        {/* Row 1 — greeting + date */}
+        <div className="flex items-start justify-between gap-4">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            {greeting ?? "Welcome"}
+            {firstName ? `, ${firstName}` : ""}! 👋
+          </h1>
+          <p
+            className="flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground"
+            suppressHydrationWarning
+          >
+            <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+            <span className="sm:hidden">{dateShort ?? ""}</span>
+            <span className="hidden sm:inline">{dateLong ?? ""}</span>
+          </p>
+        </div>
 
-            <p
-              className="mt-1.5 flex items-center gap-1.5 text-sm text-muted-foreground"
-              suppressHydrationWarning
-            >
-              <CalendarDays className="h-3.5 w-3.5 shrink-0" />
-              {dateStr ?? ""}
-            </p>
-          </div>
-
+        {/* Row 2 — buttons + streak */}
+        <div className="flex items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="sm" className="gap-2">
               <Timer className="h-3.5 w-3.5" />
@@ -72,13 +80,14 @@ export function TodayBanner() {
               <Clock className="h-3.5 w-3.5" />
               {t("logSession")}
             </Button>
-            {/* <Button variant="outline" size="sm" className="gap-2" asChild>
-              <Link href="/goals">
-                <Target className="h-3.5 w-3.5" />
-                {t("reviewGoals")}
-              </Link>
-            </Button> */}
           </div>
+
+          {!loading && (
+            <p className="flex shrink-0 items-center gap-1.5 text-base sm:hidden">
+              <Flame className={`h-4 w-4 shrink-0 ${(streak?.current ?? 0) > 0 ? "text-orange-400" : "text-muted-foreground"}`} />
+              <span className="font-semibold text-foreground">{streak?.current ?? 0}</span>
+            </p>
+          )}
         </div>
       </div>
 
