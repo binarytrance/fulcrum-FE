@@ -12,10 +12,10 @@ type Props = {
   tasks: TaskResponse[] | null;
   habits: HabitWithHistory[] | null;
   sessions: FocusSessionResponse[] | null;
-  goal: GoalResponse | null;
+  goals: GoalResponse[] | null;
 };
 
-export function TodayCardsGrid({ loading, tasks, habits, sessions, goal }: Props) {
+export function TodayCardsGrid({ loading, tasks, habits, sessions, goals }: Props) {
   return (
     <div className="today-cards-grid flex flex-col gap-3 lg:grid">
       <div className="[grid-area:tasks] lg:h-full">
@@ -28,7 +28,7 @@ export function TodayCardsGrid({ loading, tasks, habits, sessions, goal }: Props
         <FocusTodayCard sessions={sessions} loading={loading} />
       </div>
       <div className="[grid-area:goal] lg:h-full">
-        <ActiveGoalTodayCard goal={goal} loading={loading} />
+        <ActiveGoalTodayCard goals={goals} loading={loading} />
       </div>
     </div>
   );

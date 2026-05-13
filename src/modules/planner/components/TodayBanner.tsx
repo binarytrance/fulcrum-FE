@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarDays, Timer, Clock, Flame } from "lucide-react";
+import { CalendarDays, Target, Flame } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { useAuthStore } from "@/store/auth-store";
 import { formatLongDate, formatShortDate } from "@/lib/date";
 import { Button } from "@/components/ui/button";
+import { CreateGoalModal } from "@/modules/goals/components/CreateGoalModal";
 import type { AppStreak } from "@/modules/insights/types";
 // import { getDailySnippet } from "@/modules/motivation/knowledge";
 
@@ -33,6 +34,7 @@ export function TodayBanner({ streak, loading }: Props) {
     setNow(new Date());
   }, []);
 
+  const [goalModalOpen, setGoalModalOpen] = useState(false);
   const greeting = now ? t(getGreetingKey(now.getHours())) : null;
   const firstName = user?.firstname ?? "";
   // const snippet = now ? getDailySnippet(now) : null;
@@ -72,13 +74,9 @@ export function TodayBanner({ streak, loading }: Props) {
         {/* Row 2 — buttons + streak */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-2">
-              <Timer className="h-3.5 w-3.5" />
-              {t("startFocusBlock")}
-            </Button>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Clock className="h-3.5 w-3.5" />
-              {t("logSession")}
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => setGoalModalOpen(true)}>
+              <Target className="h-3.5 w-3.5" />
+              Create goal
             </Button>
           </div>
 
@@ -90,6 +88,8 @@ export function TodayBanner({ streak, loading }: Props) {
           )}
         </div>
       </div>
+
+      <CreateGoalModal open={goalModalOpen} onOpenChange={setGoalModalOpen} />
 
       {/* {snippet && (
         <div className="relative mt-4 border-t border-border/40 pt-4">
