@@ -133,12 +133,14 @@
   );
 }
 
-/* ─── Bento grid: named template areas (desktop only) ───────────────────────
-   Columns + gap are handled by Tailwind (grid gap-3 lg:grid-cols-3).
-   grid-template-areas can't be expressed as a Tailwind arbitrary value        */
+
+/* ─── Today cards bento grid (desktop only) ─────────────────────────────────
+   Mobile uses flex-col (see TodayCardsGrid.tsx).
+   grid-template-areas can't be expressed as Tailwind arbitrary values.          */
 @media (min-width: 1024px) {
   .today-cards-grid {
-    grid-template-rows: minmax(220px, 1fr) minmax(180px, 1fr) auto;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) auto;
     grid-template-areas:
       "tasks tasks habits"
       "tasks tasks focus"

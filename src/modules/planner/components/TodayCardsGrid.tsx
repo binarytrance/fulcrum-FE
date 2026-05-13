@@ -17,17 +17,17 @@ type Props = {
 
 export function TodayCardsGrid({ loading, tasks, habits, sessions, goal }: Props) {
   return (
-    <div className="today-cards-grid grid gap-3 lg:grid-cols-3">
-      <div className="[grid-area:tasks] h-full">
+    <div className="today-cards-grid flex flex-col gap-3 lg:grid lg:h-full">
+      <div className="[grid-area:tasks] lg:h-full">
         <TasksTodayCard tasks={tasks} loading={loading} />
       </div>
-      <div className="[grid-area:habits] h-full">
+      <div className="[grid-area:habits] lg:h-full">
         <HabitsTodayCard habits={habits} loading={loading} />
       </div>
-      <div className="[grid-area:focus] h-full">
+      <div className="[grid-area:focus] lg:h-full">
         <FocusTodayCard sessions={sessions} loading={loading} />
       </div>
-      <div className="[grid-area:goal]">
+      <div className="[grid-area:goal] lg:h-full">
         <ActiveGoalTodayCard goal={goal} loading={loading} />
       </div>
     </div>

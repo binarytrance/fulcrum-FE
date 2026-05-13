@@ -15,7 +15,7 @@ export function StreakSnapshot({ data, loading }: Props) {
   const isBroken = current === 0;
 
   return (
-    <div className="relative flex flex-col gap-3 rounded-2xl border border-border/60 bg-card p-4">
+    <div className="relative flex h-full flex-col gap-3 rounded-2xl border border-border/60 bg-card p-4">
       <div className="flex items-center gap-1.5">
         <Flame className={`h-3.5 w-3.5 ${isBroken || loading ? "text-muted-foreground" : "text-orange-400"}`} />
         <span className="text-xs font-medium text-muted-foreground">Streak</span>
