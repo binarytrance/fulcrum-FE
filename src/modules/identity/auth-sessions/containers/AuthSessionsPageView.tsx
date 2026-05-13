@@ -116,7 +116,7 @@ export function AuthSessionsPageView() {
     format.dateTime(new Date(iso), { dateStyle: "medium", timeStyle: "short" });
 
   return (
-    <div className="mx-auto min-h-screen max-w-2xl px-4 py-10">
+    <div className="mx-auto h-full max-w-2xl overflow-y-auto px-4 py-10">
       <div className="mb-8 flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild className="shrink-0">
           <Link href="/dashboard">

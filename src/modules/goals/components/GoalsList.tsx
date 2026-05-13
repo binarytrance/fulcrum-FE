@@ -1,16 +1,16 @@
 "use client";
 
-import type { GoalTreeNode } from "@/modules/goals/api/goals-api";
+import type { GoalResponse } from "@/modules/goals/api/goals-api";
 
 export type GoalsListVariant = "default" | "pinned";
 
 export type GoalsListProps = {
   loading: boolean;
   error: string | null;
-  goals: GoalTreeNode[] | null;
+  goals: GoalResponse[] | null;
   completingIds?: Set<string>;
   onComplete?: (goalId: string) => void;
-  onEdit?: (goal: GoalTreeNode) => void;
+  onEdit?: (goal: GoalResponse) => void;
   /**
    * Presentation switch. Prefer `variant` (component-level) over app-shell layout.
    */

@@ -133,6 +133,19 @@
   );
 }
 
+/* ─── Bento grid: named template areas (desktop only) ───────────────────────
+   Columns + gap are handled by Tailwind (grid gap-3 lg:grid-cols-3).
+   grid-template-areas can't be expressed as a Tailwind arbitrary value        */
+@media (min-width: 1024px) {
+  .today-cards-grid {
+    grid-template-rows: 1fr 1fr auto;
+    grid-template-areas:
+      "tasks tasks habits"
+      "tasks tasks focus"
+      "goal  goal  goal";
+  }
+}
+
 .dark .auth-panel-bg {
   background: linear-gradient(
     145deg,

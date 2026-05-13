@@ -8,16 +8,14 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import { useAuthStore } from "@/store/auth-store";
 import {
-
   getGoals,
   updateGoal,
   type GoalResponse,
-  type GoalTreeNode
 } from "@/modules/goals/api/goals-api";
 import { CreateGoalForm } from "@/modules/goals/components/CreateGoalForm";
 import { GoalsList } from "@/modules/goals/components/GoalsList";
 
-type GoalEditorState = { mode: "create" } | { mode: "edit"; goal: GoalTreeNode } | null;
+type GoalEditorState = { mode: "create" } | { mode: "edit"; goal: GoalResponse } | null;
 
 export function GoalsFullListView() {
   const router = useRouter();
@@ -30,7 +28,7 @@ export function GoalsFullListView() {
   const [goalEditor, setGoalEditor] = useState<GoalEditorState>(null);
   const [goalsLoading, setGoalsLoading] = useState(false);
   const [goalsError, setGoalsError] = useState<string | null>(null);
-  const [goals, setGoals] = useState<GoalTreeNode[] | null>(null);
+  const [goals, setGoals] = useState<GoalResponse[] | null>(null);
   const [completingIds, setCompletingIds] = useState<Set<string>>(() => new Set());
 
   const isAuthedLabel = user?.email
@@ -49,7 +47,7 @@ export function GoalsFullListView() {
         return;
       }
 
-      setGoals(payload.data ?? null);
+      setGoals(payload.data.items ?? null);
     } catch {
       setGoalsError(t("loadError"));
     } finally {
@@ -102,7 +100,7 @@ export function GoalsFullListView() {
   };
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-4 sm:p-8">
+    <main className="mx-auto flex h-full w-full max-w-3xl flex-col gap-4 overflow-y-auto p-4 sm:p-8">
       <div className="flex flex-col gap-3 rounded-md border p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">{t("pageTitle")}</h1>
