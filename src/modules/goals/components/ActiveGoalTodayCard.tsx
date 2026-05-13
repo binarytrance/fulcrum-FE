@@ -2,7 +2,6 @@
 
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { formatRelativeTime } from "@/lib/date";
 import { Spinner } from "@/components/ui/spinner";
 import type { GoalResponse } from "@/modules/goals/api/goals-api";
 
@@ -65,10 +64,6 @@ export function ActiveGoalTodayCard({ goal, loading }: Props) {
           </div>
 
 
-          {/* Footer */}
-          <p className="mt-auto text-[10px] text-muted-foreground">
-            updated {formatRelativeTime(goal.updatedAt)}
-          </p>
         </>
       )}
     </div>
