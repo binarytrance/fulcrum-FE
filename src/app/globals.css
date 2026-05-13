@@ -138,7 +138,7 @@
    grid-template-areas can't be expressed as a Tailwind arbitrary value        */
 @media (min-width: 1024px) {
   .today-cards-grid {
-    grid-template-rows: 1fr 1fr auto;
+    grid-template-rows: minmax(220px, 1fr) minmax(180px, 1fr) auto;
     grid-template-areas:
       "tasks tasks habits"
       "tasks tasks focus"

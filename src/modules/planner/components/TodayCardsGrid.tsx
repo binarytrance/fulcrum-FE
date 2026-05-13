@@ -17,7 +17,7 @@ type Props = {
 
 export function TodayCardsGrid({ loading, tasks, habits, sessions, goal }: Props) {
   return (
-    <div className="today-cards-grid grid gap-3 lg:grid-cols-3 lg:h-full">
+    <div className="today-cards-grid grid gap-3 lg:grid-cols-3">
       <div className="[grid-area:tasks] h-full">
         <TasksTodayCard tasks={tasks} loading={loading} />
       </div>
