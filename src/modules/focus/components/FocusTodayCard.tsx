@@ -1,8 +1,6 @@
 "use client";
 
-import { Play, ClipboardList } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import type { FocusSessionResponse } from "@/modules/focus/types";
 
@@ -28,8 +26,24 @@ function formatSessionTime(iso: string): string {
   return new Intl.DateTimeFormat("en-US", {
     hour: "numeric",
     minute: "2-digit",
-    hour12: true,
+    hour12: true
   }).format(new Date(iso));
+}
+
+function FocusActions({ onStart, className }: { onStart: () => void; className?: string }) {
+  return (
+    <div className={`flex gap-2 ${className ?? ""}`}>
+      <button
+        className="mt-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+        onClick={onStart}
+      >
+        Start session
+      </button>
+      <button className="mt-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90">
+        Log past
+      </button>
+    </div>
+  );
 }
 
 function SessionRow({ session }: { session: FocusSessionResponse }) {
@@ -62,9 +76,12 @@ export function FocusTodayCard({ sessions, loading }: Props) {
       )}
 
       {!loading && list.length === 0 && (
-        <div className="flex flex-1 flex-col justify-center">
-          <p className="text-sm font-medium text-foreground">No sessions yet</p>
-          <p className="text-xs text-muted-foreground">Start or log a session to track your focus</p>
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
+          <p className="text-sm font-medium text-foreground">No sessions today</p>
+          <p className="text-xs text-muted-foreground">
+            Start or log a session to track your focus
+          </p>
+          <FocusActions onStart={() => router.push("/focus")} className="mt-1" />
         </div>
       )}
 
@@ -75,29 +92,14 @@ export function FocusTodayCard({ sessions, loading }: Props) {
               <SessionRow key={s.id} session={s} />
             ))}
           </div>
-          <div className="shrink-0 flex justify-end border-t border-border/40 pt-1.5">
+          <div className="shrink-0 border-t border-border/40 pt-1.5">
             <span className="text-xs font-semibold tabular-nums text-foreground">
               {formatDuration(totalMinutes)} today
             </span>
           </div>
+          <FocusActions onStart={() => router.push("/focus")} className="shrink-0" />
         </>
       )}
-
-      <div className="mt-auto shrink-0 flex gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          className="flex-1 gap-1.5 text-xs"
-          onClick={() => router.push("/focus")}
-        >
-          <Play className="h-3 w-3" />
-          Start session
-        </Button>
-        <Button variant="outline" size="sm" className="flex-1 gap-1.5 text-xs">
-          <ClipboardList className="h-3 w-3" />
-          Log past
-        </Button>
-      </div>
     </div>
   );
 }

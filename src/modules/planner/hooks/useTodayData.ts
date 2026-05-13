@@ -17,7 +17,7 @@ export type TodayData = {
   tasks: TaskResponse[] | null;
   habits: HabitWithHistory[] | null;
   sessions: FocusSessionResponse[] | null;
-  goal: GoalResponse | null;
+  goals: GoalResponse[] | null;
   dailyInsights: DailyInsightsResponse | null;
 };
 
@@ -30,17 +30,17 @@ export function useTodayData(): TodayData {
   const [tasks, setTasks] = useState<TaskResponse[] | null>(null);
   const [habits, setHabits] = useState<HabitWithHistory[] | null>(null);
   const [sessions, setSessions] = useState<FocusSessionResponse[] | null>(null);
-  const [goal, setGoal] = useState<GoalResponse | null>(null);
+  const [goals, setGoals] = useState<GoalResponse[] | null>(null);
   const [dailyInsights, setDailyInsights] = useState<DailyInsightsResponse | null>(null);
 
   useEffect(() => {
     const today = getTodayDate();
 
     Promise.all([
-      getTasks({ date: today, limit: 5 }),
-      getHabits({ status: "ACTIVE", limit: 5 }),
-      getFocusSessions({ startDate: today, endDate: today, limit: 5 }),
-      getGoals({ status: "ACTIVE", limit: 1 }),
+      getTasks({ date: today, limit: 50 }),
+      getHabits({ status: "ACTIVE", limit: 50 }),
+      getFocusSessions({ startDate: today, endDate: today, limit: 50 }),
+      getGoals({ status: "ACTIVE", limit: 50 }),
       getDailyInsights(today),
     ]).then(async ([tasksRes, habitsRes, sessionsRes, goalRes, analyticsRes]) => {
       if (tasksRes.payload && "success" in tasksRes.payload && tasksRes.payload.success) {
@@ -62,9 +62,9 @@ export function useTodayData(): TodayData {
       }
 
       if (goalRes.payload && "success" in goalRes.payload && goalRes.payload.success) {
-        setGoal(goalRes.payload.data.items[0] ?? null);
+        setGoals(goalRes.payload.data.items);
       } else {
-        setGoal(null);
+        setGoals([]);
       }
 
       // 404 = no activity today yet — treat as null (cards show zero state)
@@ -78,5 +78,5 @@ export function useTodayData(): TodayData {
     });
   }, []);
 
-  return { loading, tasks, habits, sessions, goal, dailyInsights };
+  return { loading, tasks, habits, sessions, goals, dailyInsights };
 }

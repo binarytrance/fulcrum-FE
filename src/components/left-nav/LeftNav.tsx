@@ -95,7 +95,7 @@ function NavContent({ collapsed, onClose, onToggleCollapse }: NavContentProps) {
       <div className="shrink-0 border-t border-border px-2 py-2 space-y-0.5">
         {/* Preferences */}
         <NavLink
-          href="/settings/sessions"
+          href="/settings/profile"
           icon={<Settings className="h-4 w-4" />}
           label={t("preferences")}
           collapsed={collapsed}

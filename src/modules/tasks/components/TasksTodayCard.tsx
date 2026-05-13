@@ -114,10 +114,11 @@ export function TasksTodayCard({ tasks: initialTasks, loading }: Props) {
       {/* Empty */}
       {!loading && total === 0 && (
         <div className="flex flex-1 flex-col items-center justify-center gap-1 text-center">
-          <p className="text-sm font-medium text-foreground">What would make today feel like a win?</p>
+          <p className="text-sm font-medium text-foreground">No tasks today</p>
+          <p className="text-xs text-muted-foreground">What would make today feel like a win?</p>
           <button
             onClick={() => setModalOpen(true)}
-            className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+            className="mt-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
           >
             Add a task
           </button>

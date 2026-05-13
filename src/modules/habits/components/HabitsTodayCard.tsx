@@ -17,9 +17,9 @@ function OccurrenceDot({ status, isToday }: { status: OccurrenceStatus | null; i
     <span
       className={cn(
         "relative h-2 w-2 rounded-full transition-colors",
-        status === "completed" && "bg-primary",
+        status === "completed" && "bg-green-500",
         status === "pending" && "border border-border bg-transparent",
-        status === "missed" && "bg-destructive/50",
+        status === "missed" && "bg-red-500",
         status === "skipped" && "bg-muted-foreground/40",
         status === null && "bg-muted/30",
         isToday && "ring-2 ring-offset-1 ring-offset-card ring-white/70"
@@ -77,7 +77,7 @@ export function HabitsTodayCard({ habits, loading }: Props) {
 
       {!loading && list.length === 0 && (
         <div className="flex flex-1 flex-col items-center justify-center gap-1 text-center">
-          <p className="text-sm font-medium text-foreground">No habits yet</p>
+          <p className="text-sm font-medium text-foreground">No habits today</p>
           <p className="text-xs text-muted-foreground">
             Build consistency by tracking daily habits
           </p>
