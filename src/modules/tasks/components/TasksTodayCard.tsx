@@ -1,18 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Plus, ArrowRight, Zap } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Zap } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
-import Link from "next/link";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { createTask, updateTask } from "@/modules/tasks/api/tasks-api";
+import { updateTask } from "@/modules/tasks/api/tasks-api";
+import { CreateTaskModal } from "./CreateTaskModal";
 import type { TaskResponse } from "@/modules/tasks/types";
-
-function getTodayDate(): string {
-  return new Date().toISOString().split("T")[0];
-}
 
 function selectHighlightedTask(pending: TaskResponse[]): TaskResponse | null {
   if (pending.length === 0) return null;
@@ -65,11 +60,7 @@ type Props = {
 export function TasksTodayCard({ tasks: initialTasks, loading }: Props) {
   const [tasks, setTasks] = useState<TaskResponse[]>(initialTasks ?? []);
   const [togglingIds, setTogglingIds] = useState<Set<string>>(() => new Set());
-  const [addOpen, setAddOpen] = useState(false);
-  const [addValue, setAddValue] = useState("");
-  const [adding, setAdding] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const today = getTodayDate();
+  const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => { setTasks(initialTasks ?? []); }, [initialTasks]);
 
@@ -90,21 +81,12 @@ export function TasksTodayCard({ tasks: initialTasks, loading }: Props) {
     setTogglingIds((prev) => { const next = new Set(prev); next.delete(task.id); return next; });
   }
 
-  async function handleAdd(e: React.FormEvent) {
-    e.preventDefault();
-    if (!addValue.trim()) return;
-    setAdding(true);
-    const { response, payload } = await createTask({ title: addValue.trim(), scheduledFor: today });
-    if (response.ok && payload && "success" in payload && payload.success) {
-      setTasks((prev) => [...prev, payload.data]);
-    }
-    setAddValue("");
-    setAdding(false);
-    setAddOpen(false);
+  function handleCreated(task: TaskResponse) {
+    setTasks((prev) => [...prev, task]);
   }
 
   return (
-    <div className="flex h-full min-h-[280px] flex-col gap-3 rounded-2xl border border-border/60 bg-card p-4">
+    <div className="flex h-full min-h-[280px] flex-col gap-3 overflow-hidden rounded-2xl border border-border/60 bg-card p-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -115,46 +97,11 @@ export function TasksTodayCard({ tasks: initialTasks, loading }: Props) {
             </span>
           )}
         </div>
-        <Popover
-          open={addOpen}
-          onOpenChange={(v) => {
-            setAddOpen(v);
-            if (v) setTimeout(() => inputRef.current?.focus(), 50);
-          }}
-        >
-          <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground">
-              <Plus className="h-3.5 w-3.5" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-60 p-2">
-            <form onSubmit={handleAdd} className="flex flex-col gap-2">
-              <input
-                ref={inputRef}
-                value={addValue}
-                onChange={(e) => setAddValue(e.target.value)}
-                placeholder="Add a task for today…"
-                className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus:border-ring"
-              />
-              <div className="flex items-center justify-between">
-                <button
-                  type="submit"
-                  disabled={adding || !addValue.trim()}
-                  className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                >
-                  {adding ? "Adding…" : "Add"}
-                </button>
-                <Link
-                  href="/tasks"
-                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                  onClick={() => setAddOpen(false)}
-                >
-                  View all <ArrowRight className="h-3 w-3" />
-                </Link>
-              </div>
-            </form>
-          </PopoverContent>
-        </Popover>
+        {(loading || total > 0) && (
+          <Button variant="outline" size="sm" className="h-6 px-2 text-xs" onClick={() => setModalOpen(true)}>
+            + Add
+          </Button>
+        )}
       </div>
 
       {/* Loading */}
@@ -169,7 +116,7 @@ export function TasksTodayCard({ tasks: initialTasks, loading }: Props) {
         <div className="flex flex-1 flex-col items-center justify-center gap-1 text-center">
           <p className="text-sm font-medium text-foreground">What would make today feel like a win?</p>
           <button
-            onClick={() => { setAddOpen(true); setTimeout(() => inputRef.current?.focus(), 50); }}
+            onClick={() => setModalOpen(true)}
             className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
           >
             Add a task
@@ -240,6 +187,11 @@ export function TasksTodayCard({ tasks: initialTasks, loading }: Props) {
           )}
         </div>
       )}
+      <CreateTaskModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        onCreated={handleCreated}
+      />
     </div>
   );
 }

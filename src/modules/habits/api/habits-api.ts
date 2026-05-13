@@ -27,6 +27,33 @@ export async function getHabits(params: HabitsQueryParams = {}): Promise<{
   return { response, payload };
 }
 
+type CreateHabitInput = {
+  title: string;
+  frequency: "daily" | "specific_days";
+  daysOfWeek?: number[];
+  targetDuration?: number;
+  description?: string;
+  goalId?: string;
+};
+
+export async function createHabit(input: CreateHabitInput): Promise<{
+  response: Response;
+  payload?: ApiSuccess<HabitResponse> | ApiFailure;
+}> {
+  const response = await apiFetch("/habits", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  let payload: ApiSuccess<HabitResponse> | ApiFailure | undefined;
+  try {
+    payload = (await response.json()) as ApiSuccess<HabitResponse> | ApiFailure;
+  } catch {
+    payload = undefined;
+  }
+  return { response, payload };
+}
+
 export async function getHabitOccurrences(id: string): Promise<{
   response: Response;
   payload?: ApiSuccess<OccurrenceResponse[]> | ApiFailure;
