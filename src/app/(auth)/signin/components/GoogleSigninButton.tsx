@@ -4,6 +4,7 @@ import { buildOAuthStartUrl, GOOGLE_SIGNIN_CALLBACK_PATH } from "@/utils/auth";
 import { generateCodeVerifier, generateCodeChallenge, saveCodeVerifier } from "@/utils/pkce";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
+import { analytics } from "@/lib/analytics";
 
 function GoogleIcon() {
   return (
@@ -46,6 +47,7 @@ export function GoogleSigninButton({ className }: GoogleSigninButtonProps) {
     try {
       setLoading(true);
       setError(null);
+      analytics.capture("sign_in_initiated", { provider: "google" });
       const verifier = generateCodeVerifier();
       const challenge = await generateCodeChallenge(verifier);
       saveCodeVerifier(verifier);

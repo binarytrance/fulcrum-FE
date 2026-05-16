@@ -9,6 +9,7 @@ import { useAuthStore } from "@/store/auth-store";
 import { exchangeOAuthCode } from "@/utils/complete-auth";
 import { consumeCodeVerifier } from "@/utils/pkce";
 import { Button } from "@/components/ui/button";
+import { analytics } from "@/lib/analytics";
 
 // ─── Inner content ────────────────────────────────────────────────────────────
 
@@ -55,9 +56,12 @@ function GoogleSignupCallbackContent() {
 
       try {
         const user = await exchangeOAuthCode(code, codeVerifier);
+        analytics.identify(user.id, { email: user.email, firstname: user.firstname, lastname: user.lastname });
+        analytics.capture("sign_up_completed", { provider: "google" });
         setUser(user);
         router.replace("/dashboard");
       } catch (err) {
+        analytics.captureException(err);
         setError(err instanceof Error ? err.message : t("errorDefault", { provider, action }));
         setLoading(false);
       }

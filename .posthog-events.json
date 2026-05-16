@@ -1,0 +1,52 @@
+[
+  {
+    "event": "sign_up_initiated",
+    "description": "User clicked a sign-up button (Google or GitHub OAuth) to begin the signup flow",
+    "file": "src/app/(auth)/signup/components/GoogleSignupButton.tsx"
+  },
+  {
+    "event": "sign_in_initiated",
+    "description": "User clicked a sign-in button (Google or GitHub OAuth) to begin the signin flow",
+    "file": "src/app/(auth)/signin/components/GoogleSigninButton.tsx"
+  },
+  {
+    "event": "sign_up_completed",
+    "description": "User successfully completed OAuth signup and their account was created",
+    "file": "src/app/(auth)/signup/google/callback/page.tsx"
+  },
+  {
+    "event": "sign_in_completed",
+    "description": "User successfully signed in via OAuth and was redirected to the app",
+    "file": "src/app/(auth)/signin/google/callback/page.tsx"
+  },
+  {
+    "event": "goal_created",
+    "description": "User successfully created a new goal (captures category, priority, has_deadline, has_estimated_hours)",
+    "file": "src/modules/goals/components/CreateGoalForm.tsx"
+  },
+  {
+    "event": "goal_updated",
+    "description": "User successfully edited an existing goal",
+    "file": "src/modules/goals/components/CreateGoalForm.tsx"
+  },
+  {
+    "event": "task_created",
+    "description": "User successfully created a new task (captures priority, has_goal, has_estimated_duration)",
+    "file": "src/modules/tasks/components/CreateTaskModal.tsx"
+  },
+  {
+    "event": "habit_created",
+    "description": "User successfully created a new habit (captures frequency, has_target_duration)",
+    "file": "src/modules/habits/components/CreateHabitModal.tsx"
+  },
+  {
+    "event": "session_revoked",
+    "description": "User revoked a specific auth session (captures is_current_session)",
+    "file": "src/modules/identity/auth-sessions/containers/AuthSessionsPageView.tsx"
+  },
+  {
+    "event": "all_sessions_revoked",
+    "description": "User signed out of all sessions",
+    "file": "src/modules/identity/auth-sessions/containers/AuthSessionsPageView.tsx"
+  }
+]

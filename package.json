@@ -31,6 +31,7 @@
     "next-intl": "^4.9.1",
     "nextjs-toploader": "^3.9.17",
     "openai": "^5.12.2",
+    "posthog-js": "^1.373.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.62.0",

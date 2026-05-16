@@ -10,6 +10,7 @@ import { Loader2, Zap, Mail, Lock, AlertCircle, CheckCircle2 } from "lucide-reac
 import { useTranslations } from "next-intl";
 
 import { authApiFetch } from "@/utils/auth-api";
+import { analytics } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -78,10 +79,12 @@ export default function SignUpPage() {
       const payload = (await response.json()) as SignupResponse;
 
       if (!response.ok || !payload.success) {
+        analytics.capture("sign_up_failed", { provider: "email" });
         setRequestError(payload.message || t("errorSignupFailed"));
         return;
       }
 
+      analytics.capture("sign_up_initiated", { provider: "email" });
       setSuccessMessage(payload.message || t("defaultSuccessMessage"));
 
       setTimeout(() => {
