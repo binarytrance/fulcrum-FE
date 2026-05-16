@@ -10,6 +10,7 @@ import { useTranslations } from "next-intl";
 
 import { useAuthStore } from "@/store/auth-store";
 import { authApiFetch } from "@/utils/auth-api";
+import { analytics } from "@/lib/analytics";
 import { completeAuthWithTokens } from "@/utils/complete-auth";
 import { toast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
@@ -76,6 +77,7 @@ function VerifyEmailContent() {
       const payload = (await response.json()) as VerifyEmailApiResponse;
 
       if (!response.ok || !payload.success) {
+        analytics.capture("email_verification_failed");
         setRequestError(payload.message ?? t("errorVerificationFailed"));
         return;
       }
@@ -87,6 +89,9 @@ function VerifyEmailContent() {
 
       const { accessToken } = payload.data;
       const user = await completeAuthWithTokens(accessToken);
+      analytics.identify(user.id, { email: user.email, firstname: user.firstname, lastname: user.lastname });
+      analytics.capture("email_verified");
+      analytics.capture("sign_up_completed", { provider: "email" });
       setAuth(user, accessToken);
       toast.success(t("toastVerifiedTitle"), t("toastVerifiedDesc"));
       router.replace("/dashboard");
@@ -111,6 +116,7 @@ function VerifyEmailContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email })
       });
+      analytics.capture("email_verification_resent");
       setResendSent(true);
       toast.success(t("toastResentTitle"), t("toastResentDesc", { email }));
     } catch {

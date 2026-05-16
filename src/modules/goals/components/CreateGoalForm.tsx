@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslations } from 'next-intl';
 
 import { Button } from '@/components/ui/button';
+import { analytics } from "@/lib/analytics";
 import {
     Form,
     FormControl,
@@ -194,6 +195,13 @@ export function CreateGoalForm({
             setSubmitError(t('readResponseError'));
             return;
         }
+
+        analytics.capture(mode === 'edit' ? 'goal_updated' : 'goal_created', {
+            category: values.category,
+            priority: values.priority ?? null,
+            has_deadline: Boolean(values.deadline?.trim()),
+            has_estimated_hours: Boolean(values.estimatedHours?.trim()),
+        });
 
         form.reset(defaultValues);
         onSaved(payload.data, payload.message);

@@ -6,6 +6,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { updateTask } from "@/modules/tasks/api/tasks-api";
+import { analytics } from "@/lib/analytics";
 import { CreateTaskModal } from "./CreateTaskModal";
 import type { TaskResponse } from "@/modules/tasks/types";
 
@@ -74,6 +75,7 @@ export function TasksTodayCard({ tasks: initialTasks, loading }: Props) {
     const newStatus = task.status === "COMPLETED" ? "PENDING" : "COMPLETED";
     setTogglingIds((prev) => new Set(prev).add(task.id));
     setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, status: newStatus } : t)));
+    analytics.capture("task_status_changed", { new_status: newStatus, from_view: "today_card" });
     const { response } = await updateTask(task.id, { status: newStatus });
     if (!response.ok) {
       setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, status: task.status } : t)));

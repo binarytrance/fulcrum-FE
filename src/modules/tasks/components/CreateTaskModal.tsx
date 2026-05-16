@@ -16,6 +16,7 @@ import { createTask } from "@/modules/tasks/api/tasks-api";
 import { getGoals } from "@/modules/goals/api/goals-api";
 import type { GoalResponse } from "@/modules/goals/api/goals-api";
 import type { TaskResponse } from "@/modules/tasks/types";
+import { analytics } from "@/lib/analytics";
 
 const schema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -85,6 +86,11 @@ export function CreateTaskModal({ open, onOpenChange, onCreated }: Props) {
       scheduledFor: getTodayDate(),
     });
     if (response.ok && payload && "success" in payload && payload.success) {
+      analytics.capture("task_created", {
+        priority: values.priority,
+        has_goal: Boolean(values.goalId),
+        has_estimated_duration: Boolean(values.estimatedMinutes),
+      });
       onCreated(payload.data);
       onOpenChange(false);
     } else {

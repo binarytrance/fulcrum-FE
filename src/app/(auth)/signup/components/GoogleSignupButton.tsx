@@ -4,6 +4,7 @@ import { buildOAuthStartUrl, GOOGLE_SIGNUP_CALLBACK_PATH } from "@/utils/auth";
 import { generateCodeVerifier, generateCodeChallenge, saveCodeVerifier } from "@/utils/pkce";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
+import { analytics } from "@/lib/analytics";
 
 // ─── Google "G" brand icon ────────────────────────────────────────────────────
 
@@ -50,6 +51,7 @@ export function GoogleSignupButton({ className }: GoogleSignupButtonProps) {
     try {
       setLoading(true);
       setError(null);
+      analytics.capture("sign_up_initiated", { provider: "google" });
       const verifier = generateCodeVerifier();
       const challenge = await generateCodeChallenge(verifier);
       saveCodeVerifier(verifier);

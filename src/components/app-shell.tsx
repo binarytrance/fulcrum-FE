@@ -14,6 +14,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth-store";
+import { analytics } from "@/lib/analytics";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -21,6 +22,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     function handleSessionExpired() {
+      analytics.capture("session_expired");
       void clearAuth();
       router.replace("/signin");
     }

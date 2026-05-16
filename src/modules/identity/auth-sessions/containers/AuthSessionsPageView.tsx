@@ -22,6 +22,7 @@ import {
 } from "@/modules/identity/auth-sessions/api/auth-sessions-api";
 import type { AuthSession } from "@/types";
 import { Button } from "@/components/ui/button";
+import { analytics } from "@/lib/analytics";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 function guessDeviceIcon(userAgent: string | null) {
@@ -82,6 +83,7 @@ export function AuthSessionsPageView() {
     setError(null);
     try {
       await revokeSession(sessionId);
+      analytics.capture("session_revoked", { is_current_session: isCurrent });
       if (isCurrent) {
         await signoutAll();
         router.replace("/signin");
@@ -103,6 +105,7 @@ export function AuthSessionsPageView() {
     setRevokingAll(true);
     setError(null);
     try {
+      analytics.capture("all_sessions_revoked");
       await signoutAll();
       router.replace("/signin");
     } catch (err) {

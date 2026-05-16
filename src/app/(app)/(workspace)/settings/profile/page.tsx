@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth-store";
 import { Avatar } from "@/components/ui/avatar";
+import { analytics } from "@/lib/analytics";
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
@@ -26,6 +27,7 @@ export default function ProfileSettingsPage() {
   const initials = [firstname[0], lastname[0]].filter(Boolean).join("").toUpperCase();
 
   async function handleSignOut() {
+    analytics.capture("signed_out", { from: "settings" });
     await clearAuth();
     router.replace("/signin");
   }

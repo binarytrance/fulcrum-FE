@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { createHabit } from "@/modules/habits/api/habits-api";
 import type { HabitWithHistory } from "@/modules/habits/types";
+import { analytics } from "@/lib/analytics";
 
 const DAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"] as const;
 
@@ -84,6 +85,10 @@ export function CreateHabitModal({ open, onOpenChange, onCreated }: Props) {
       targetDuration,
     });
     if (response.ok && payload && "success" in payload && payload.success) {
+      analytics.capture("habit_created", {
+        frequency: values.frequency,
+        has_target_duration: Boolean(values.targetMinutes),
+      });
       onCreated(payload.data);
       onOpenChange(false);
     } else {

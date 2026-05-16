@@ -4,6 +4,7 @@ import { buildOAuthStartUrl } from "@/utils/auth";
 import { generateCodeVerifier, generateCodeChallenge, saveCodeVerifier } from "@/utils/pkce";
 import { Github, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { analytics } from "@/lib/analytics";
 
 const GITHUB_SIGNIN_CALLBACK_PATH = "/signin/github/callback";
 
@@ -19,6 +20,7 @@ export function GitHubSigninButton({ className }: GitHubSigninButtonProps) {
     try {
       setLoading(true);
       setError(null);
+      analytics.capture("sign_in_initiated", { provider: "github" });
       const verifier = generateCodeVerifier();
       const challenge = await generateCodeChallenge(verifier);
       saveCodeVerifier(verifier);

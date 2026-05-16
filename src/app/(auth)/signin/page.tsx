@@ -11,6 +11,7 @@ import { useTranslations } from "next-intl";
 
 import { useAuthStore } from "@/store/auth-store";
 import { authApiFetch } from "@/utils/auth-api";
+import { analytics } from "@/lib/analytics";
 import { completeAuthWithTokens } from "@/utils/complete-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,6 +76,7 @@ export default function SignInPage() {
       const payload = (await response.json()) as SigninApiResponse;
 
       if (!response.ok || !payload.success) {
+        analytics.capture("sign_in_failed", { provider: "email" });
         setRequestError(payload.message ?? t("errorSignInFailed"));
         return;
       }
@@ -86,6 +88,8 @@ export default function SignInPage() {
 
       const { accessToken } = payload.data;
       const user = await completeAuthWithTokens(accessToken);
+      analytics.identify(user.id, { email: user.email, firstname: user.firstname, lastname: user.lastname });
+      analytics.capture("sign_in_completed", { provider: "email" });
       setAuth(user, accessToken);
       router.replace("/dashboard");
     } catch {

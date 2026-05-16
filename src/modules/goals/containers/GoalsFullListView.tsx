@@ -14,6 +14,7 @@ import {
 } from "@/modules/goals/api/goals-api";
 import { CreateGoalForm } from "@/modules/goals/components/CreateGoalForm";
 import { GoalsList } from "@/modules/goals/components/GoalsList";
+import { analytics } from "@/lib/analytics";
 
 type GoalEditorState = { mode: "create" } | { mode: "edit"; goal: GoalResponse } | null;
 
@@ -61,6 +62,7 @@ export function GoalsFullListView() {
 
   const handleLogout = async () => {
     setLogoutLoading(true);
+    analytics.capture("signed_out", { from: "goals" });
     try {
       await clearAuth();
     } finally {
@@ -80,6 +82,8 @@ export function GoalsFullListView() {
         toast.error(tCommon("genericError"));
         return;
       }
+
+      analytics.capture("goal_completed", { goal_id: goalId });
 
       if (payload && "success" in payload && payload.success) {
         toast.success(payload.message);
