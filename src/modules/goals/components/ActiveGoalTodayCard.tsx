@@ -80,7 +80,7 @@ export function ActiveGoalTodayCard({ goals, loading }: Props) {
       <CreateGoalModal
         open={modalOpen}
         onOpenChange={setModalOpen}
-        onCreated={(goal) => setList((prev) => [...prev, goal])}
+        onSaved={(goal) => setList((prev) => [...prev, goal])}
       />
     </div>
   );

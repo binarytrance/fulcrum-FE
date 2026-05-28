@@ -43,18 +43,8 @@ export function TodayBanner({ streak, loading }: Props) {
   const dateLong = now ? formatLongDate(now) : null;
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card px-6 py-5">
-      {/* Subtle purple glow — dark mode only */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 opacity-0 dark:opacity-100"
-        style={{
-          background:
-            "radial-gradient(ellipse at 15% 65%, oklch(0.22 0.07 290 / 0.75) 0%, transparent 55%)"
-        }}
-      />
-
-      <div className="relative flex flex-col gap-3.5">
+    <div className="px-6 py-5">
+      <div className="flex flex-col gap-3.5">
         {/* Row 1 — greeting + date */}
         <div className="flex items-start justify-between gap-4">
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">

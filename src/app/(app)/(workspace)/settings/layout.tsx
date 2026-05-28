@@ -13,7 +13,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   const pathname = usePathname();
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-4 lg:p-8">
+    <div className="flex flex-col gap-6 p-4 lg:p-8">
       <div>
         <h1 className="text-xl font-semibold text-foreground">Settings</h1>
       </div>

@@ -37,7 +37,7 @@ export function useTodayData(): TodayData {
     const today = getTodayDate();
 
     Promise.all([
-      getTasks({ date: today, limit: 50 }),
+      getTasks({ startDate: today, limit: 50 }),
       getHabits({ status: "ACTIVE", limit: 50 }),
       getFocusSessions({ startDate: today, endDate: today, limit: 50 }),
       getGoals({ status: "ACTIVE", limit: 50 }),

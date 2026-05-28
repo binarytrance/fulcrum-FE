@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api";
-import type { HabitResponse, OccurrenceResponse, PaginatedHabits, HabitsQueryParams } from "../types";
+import type { HabitResponse, OccurrenceResponse, OccurrenceStatus, PaginatedHabits, HabitsQueryParams } from "../types";
 
 type ApiSuccess<T> = { success: true; message: string; data: T };
 type ApiFailure = { success: false; message: unknown };
@@ -62,6 +62,25 @@ export async function getHabitOccurrences(id: string): Promise<{
   let payload: ApiSuccess<OccurrenceResponse[]> | ApiFailure | undefined;
   try {
     payload = (await response.json()) as ApiSuccess<OccurrenceResponse[]> | ApiFailure;
+  } catch {
+    payload = undefined;
+  }
+  return { response, payload };
+}
+
+export async function updateHabitOccurrence(
+  habitId: string,
+  date: string,
+  status: OccurrenceStatus,
+): Promise<{ response: Response; payload?: ApiSuccess<OccurrenceResponse> | ApiFailure }> {
+  const response = await apiFetch(`/habits/${habitId}/occurrences/${date}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+  let payload: ApiSuccess<OccurrenceResponse> | ApiFailure | undefined;
+  try {
+    payload = (await response.json()) as ApiSuccess<OccurrenceResponse> | ApiFailure;
   } catch {
     payload = undefined;
   }

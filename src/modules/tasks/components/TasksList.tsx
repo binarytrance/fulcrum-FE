@@ -1,13 +1,39 @@
-import type { PaginatedTasks } from "../types";
+import type { PaginatedTasks, TaskResponse } from "../types";
 import { TaskRow } from "./TaskRow";
 import { Button } from "@/components/ui/button";
+import { formatDateHeader } from "@/lib/date";
 
 type TasksListProps = {
   loading: boolean;
   error: string | null;
   data: PaginatedTasks | null;
   onPageChange: (page: number) => void;
+  onSelect: (taskId: string) => void;
+  onStart: (taskId: string) => void;
+  onPause: (taskId: string) => void;
+  onComplete: (taskId: string) => void;
+  startingIds: Set<string>;
+  pausingIds: Set<string>;
+  completingIds: Set<string>;
 };
+
+const UNSCHEDULED = "__unscheduled__";
+
+function groupByDate(items: TaskResponse[]): { date: string | null; tasks: TaskResponse[] }[] {
+  const map = new Map<string, TaskResponse[]>();
+  for (const task of items) {
+    const key = task.scheduledFor ?? UNSCHEDULED;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(task);
+  }
+  return [...map.entries()]
+    .sort(([a], [b]) => {
+      if (a === UNSCHEDULED) return 1;
+      if (b === UNSCHEDULED) return -1;
+      return a.localeCompare(b);
+    })
+    .map(([date, tasks]) => ({ date: date === UNSCHEDULED ? null : date, tasks }));
+}
 
 function SkeletonRow() {
   return (
@@ -21,7 +47,7 @@ function SkeletonRow() {
   );
 }
 
-export function TasksList({ loading, error, data, onPageChange }: TasksListProps) {
+export function TasksList({ loading, error, data, onPageChange, onSelect, onStart, onPause, onComplete, startingIds, pausingIds, completingIds }: TasksListProps) {
   if (loading) {
     return (
       <div className="space-y-2">
@@ -47,35 +73,43 @@ export function TasksList({ loading, error, data, onPageChange }: TasksListProps
     );
   }
 
-  return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        {data.items.map((task) => (
-          <TaskRow key={task.id} task={task} />
-        ))}
-      </div>
+  const groups = groupByDate(data.items);
 
-      {/* Pagination */}
+  return (
+    <div className="space-y-6">
+      {groups.map(({ date, tasks }) => (
+        <div key={date ?? UNSCHEDULED}>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {date ? formatDateHeader(date) : "Unscheduled"}
+          </p>
+          <div className="space-y-2">
+            {tasks.map((task) => (
+              <TaskRow
+                key={task.id}
+                task={task}
+                onSelect={onSelect}
+                onStart={onStart}
+                onPause={onPause}
+                onComplete={onComplete}
+                isStarting={startingIds.has(task.id)}
+                isPausing={pausingIds.has(task.id)}
+                isCompleting={completingIds.has(task.id)}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+
       {data.totalPages > 1 && (
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">
             Page {data.page} of {data.totalPages} · {data.total} tasks
           </span>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={data.page <= 1}
-              onClick={() => onPageChange(data.page - 1)}
-            >
+            <Button variant="outline" size="sm" disabled={data.page <= 1} onClick={() => onPageChange(data.page - 1)}>
               Previous
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={data.page >= data.totalPages}
-              onClick={() => onPageChange(data.page + 1)}
-            >
+            <Button variant="outline" size="sm" disabled={data.page >= data.totalPages} onClick={() => onPageChange(data.page + 1)}>
               Next
             </Button>
           </div>

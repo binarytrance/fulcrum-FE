@@ -25,8 +25,16 @@ export function FocusTimeSnapshot({ data, loading }: Props) {
   const router = useRouter();
 
   const menuItems = [
-    { label: "Start focus session", icon: <Play className="h-3.5 w-3.5" />, onClick: () => router.push("/focus") },
-    { label: "Log past session", icon: <ClipboardList className="h-3.5 w-3.5" />, onClick: () => {} },
+    {
+      label: "Start focus session",
+      icon: <Play className="h-3.5 w-3.5" />,
+      onClick: () => router.push("/focus")
+    },
+    {
+      label: "Log past session",
+      icon: <ClipboardList className="h-3.5 w-3.5" />,
+      onClick: () => {}
+    }
   ];
 
   const minutes = data?.totalLoggedMinutes ?? 0;
@@ -36,14 +44,6 @@ export function FocusTimeSnapshot({ data, loading }: Props) {
     <div className="relative flex flex-col gap-3 rounded-2xl border border-border/60 bg-card p-4">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-muted-foreground">Focus time</span>
-        <ActionMenu
-          trigger={
-            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground">
-              <Play className="h-3.5 w-3.5" />
-            </Button>
-          }
-          items={menuItems}
-        />
       </div>
 
       {loading ? (
@@ -56,7 +56,9 @@ export function FocusTimeSnapshot({ data, loading }: Props) {
             {formatDuration(minutes)}
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {sessions === 0 ? "no sessions yet" : `${sessions} session${sessions === 1 ? "" : "s"} today`}
+            {sessions === 0
+              ? "no sessions yet"
+              : `${sessions} session${sessions === 1 ? "" : "s"} today`}
           </p>
         </div>
       )}

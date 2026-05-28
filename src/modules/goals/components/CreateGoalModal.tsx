@@ -13,10 +13,12 @@ import type { GoalResponse } from "@/modules/goals/api/goals-api";
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreated?: (goal: GoalResponse) => void;
+  mode?: "create" | "edit";
+  initialGoal?: GoalResponse;
+  onSaved?: (goal: GoalResponse, message: string) => void;
 };
 
-export function CreateGoalModal({ open, onOpenChange, onCreated }: Props) {
+export function CreateGoalModal({ open, onOpenChange, mode = "create", initialGoal, onSaved }: Props) {
   const router = useRouter();
 
   return (
@@ -26,13 +28,14 @@ export function CreateGoalModal({ open, onOpenChange, onCreated }: Props) {
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>Create goal</DialogTitle>
+          <DialogTitle>{mode === "edit" ? "Edit goal" : "Create goal"}</DialogTitle>
         </DialogHeader>
         <div className="[&>div]:border-0 [&>div]:p-0 [&>div>h2]:hidden [&>div>p]:hidden">
           <CreateGoalForm
-            mode="create"
-            onSaved={(goal) => {
-              onCreated?.(goal);
+            mode={mode}
+            initialGoal={initialGoal}
+            onSaved={(goal, message) => {
+              onSaved?.(goal, message);
               onOpenChange(false);
             }}
             onCancel={() => onOpenChange(false)}
