@@ -12,7 +12,8 @@ export async function getTasks(params: TasksQueryParams = {}): Promise<{
   if (params.status) query.set("status", params.status);
   if (params.type) query.set("type", params.type);
   if (params.goalId) query.set("goalId", params.goalId);
-  if (params.date) query.set("date", params.date);
+  if (params.startDate) query.set("startDate", params.startDate);
+  if (params.endDate) query.set("endDate", params.endDate);
   if (params.page) query.set("page", String(params.page));
   if (params.limit) query.set("limit", String(params.limit));
 
@@ -44,6 +45,8 @@ type UpdateTaskInput = Partial<{
   priority: TaskPriority;
   scheduledFor: string | null;
   estimatedDuration: number;
+  completedAt: string;
+  actualDuration: number;
 }>;
 
 export async function createTask(input: CreateTaskInput): Promise<{

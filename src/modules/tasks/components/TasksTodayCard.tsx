@@ -13,7 +13,7 @@ import type { TaskResponse } from "@/modules/tasks/types";
 function selectHighlightedTask(pending: TaskResponse[]): TaskResponse | null {
   if (pending.length === 0) return null;
   const priorityOrder: Record<string, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
-  const withGoal = pending.filter((t) => t.goalId);
+  const withGoal = pending.filter((t) => t.goal.id);
   const pool = withGoal.length > 0 ? withGoal : pending;
   return [...pool].sort((a, b) => {
     const p = priorityOrder[a.priority] - priorityOrder[b.priority];

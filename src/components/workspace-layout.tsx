@@ -9,7 +9,9 @@ export function WorkspaceLayout({ children }: { children: React.ReactNode }) {
       <LeftNav />
       {/* pt-14 offsets the fixed mobile topbar; lg:pt-0 removes it on desktop */}
       <main className="flex-1 h-full overflow-y-auto pt-14 lg:pt-0">
-        {children}
+        <div className="mx-auto flex h-full w-full max-w-6xl flex-col">
+          {children}
+        </div>
       </main>
     </div>
   );
