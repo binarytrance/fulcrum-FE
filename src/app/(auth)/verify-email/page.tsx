@@ -8,13 +8,13 @@ import * as zod from "zod";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 
-import { useAuthStore } from "@/store/auth-store";
-import { authApiFetch } from "@/utils/auth-api";
-import { analytics } from "@/lib/analytics";
-import { completeAuthWithTokens } from "@/utils/complete-auth";
-import { toast } from "@/components/ui/toast";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useAuthStore } from "@/shared/store/auth-store";
+import { authApiFetch } from "@/shared/utils/auth-api";
+import { analytics } from "@/shared/lib/analytics";
+import { completeAuthWithTokens } from "@/shared/utils/complete-auth";
+import { toast } from "@/shared/components/ui/toast";
+import { Button } from "@/shared/components/ui/button";
+import { Input } from "@/shared/components/ui/input";
 import {
   Form,
   FormControl,
@@ -22,8 +22,8 @@ import {
   FormItem,
   FormLabel,
   FormMessage
-} from "@/components/ui/form";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+} from "@/shared/components/ui/form";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

@@ -1,7 +1,7 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Button } from "@/shared/components/ui/button";
+import { cn } from "@/shared/lib/utils";
 import type { GoalResponse, GoalPriority } from "@/modules/goals/api/goals-api";
 
 const PRIORITY_DOT: Record<GoalPriority, string> = {

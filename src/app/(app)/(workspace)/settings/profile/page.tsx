@@ -1,9 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/store/auth-store";
-import { Avatar } from "@/components/ui/avatar";
-import { analytics } from "@/lib/analytics";
+import { useAuthStore } from "@/shared/store/auth-store";
+import { Avatar } from "@/shared/components/ui/avatar";
+import { analytics } from "@/shared/lib/analytics";
 
 function Field({ label, value }: { label: string; value: string }) {
   return (

@@ -19,23 +19,32 @@ src/
 │       ├── logic/        pure domain logic
 │       ├── hooks/        data hooks (e.g. planner/useTodayData)
 │       └── types/
-├── components/     shared UI: ui/ (primitives), left-nav/, app shell, providers
-├── lib/            api client, analytics, date/duration/cn helpers
-├── store/          global client state (auth only, ADR 0009)
-├── utils/          auth + PKCE helpers, localStorage helpers
-├── actions/        server actions
-├── i18n/           next-intl request config (ADR 0013)
-└── types/          shared types
+├── shared/         domain-free code, the lowest layer
+│   ├── components/   ui/ (primitives), left-nav/, app shell, providers
+│   ├── lib/          api client, analytics, date/duration/cn helpers
+│   ├── store/        global client state (auth only, ADR 0009)
+│   ├── utils/        auth + PKCE helpers, localStorage helpers
+│   ├── actions/      server actions
+│   └── types/        shared types
+└── i18n/           next-intl request config (ADR 0013)
 ```
 
 | Put it in | When |
 |---|---|
 | `modules/<domain>` | It belongs to one domain's behaviour or UI |
-| `components/ui` | A generic primitive with no domain knowledge |
-| `lib` / `utils` | A domain-free helper |
+| `shared/components/ui` | A generic primitive with no domain knowledge |
+| `shared/lib` / `shared/utils` | A domain-free helper |
+| `shared/hooks` | A generic hook (no domain knowledge) used by several modules. Created when the first one is needed; the shadcn CLI also generates hooks here (`components.json`) |
+| `modules/<domain>/hooks` | A hook that fetches or encodes domain data (e.g. `planner/useTodayData`) |
 | `app/` | Only to wire a URL to a module view |
 
-Shared folders **must not import from `modules/`** (enforced, ADR 0002).
+`shared/` **must not import from `modules/`**. This is enforced by a
+`no-restricted-imports` block in `eslint.config.mjs` (ADR 0002) and covers
+barrel, deep and relative imports. Code that composes modules belongs in a
+module (usually `planner`) or in `app/`, not in `shared/`.
+
+Import shared code with the `@/shared/...` alias, e.g.
+`@/shared/components/ui/button`, `@/shared/lib/api`.
 
 ## Consequences
 
@@ -45,7 +54,5 @@ Shared folders **must not import from `modules/`** (enforced, ADR 0002).
 
 ## Known gaps
 
-- `components.json` declares a `@/hooks` alias but there is no `src/hooks`;
-  hooks currently live inside modules.
 - Some modules contain empty `insights/` folders reserved for inline analytics
   (see `src/CLAUDE.md`).

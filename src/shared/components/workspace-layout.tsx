@@ -1,4 +1,4 @@
-import { LeftNav } from "@/components/left-nav/LeftNav";
+import { LeftNav } from "@/shared/components/left-nav/LeftNav";
 
 // Wraps all (workspace)/ pages with the left nav sidebar.
 // Pages that don't need the sidebar (e.g. focus session, onboarding) should live

@@ -1,5 +1,5 @@
-import { setAccessToken, API_V1_BASE as API_BASE } from "@/lib/api";
-import type { AuthUser } from "@/types";
+import { setAccessToken, API_V1_BASE as API_BASE } from "@/shared/lib/api";
+import type { AuthUser } from "@/shared/types";
 
 type MeApiResponse = {
   success: boolean;

@@ -9,14 +9,14 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+} from "@/shared/components/ui/dialog";
+import { Button } from "@/shared/components/ui/button";
+import { cn } from "@/shared/lib/utils";
 import { createTask } from "@/modules/tasks/api/tasks-api";
 import { getGoals } from "@/modules/goals";
 import type { GoalResponse } from "@/modules/goals";
 import type { TaskResponse } from "@/modules/tasks/types";
-import { analytics } from "@/lib/analytics";
+import { analytics } from "@/shared/lib/analytics";
 
 const schema = z.object({
   title: z.string().min(1, "Title is required"),

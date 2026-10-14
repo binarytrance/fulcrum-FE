@@ -1,7 +1,7 @@
 "use client";
 
 import { Flame } from "lucide-react";
-import { Spinner } from "@/components/ui/spinner";
+import { Spinner } from "@/shared/components/ui/spinner";
 import type { AppStreak } from "@/modules/insights";
 
 type Props = {

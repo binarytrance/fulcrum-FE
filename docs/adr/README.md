@@ -37,7 +37,7 @@ flowchart TB
       other["identity · settings<br/>onboarding"]
     end
 
-    shared["<b>Shared</b><br/>components/ui (ADR 0010) · lib/api + analytics (ADR 0008, 0014)<br/>store/auth (ADR 0007, 0009) · utils (PKCE) · i18n (ADR 0013)"]
+    shared["<b>shared/</b> (lowest layer, no module imports)<br/>components/ui (ADR 0010) · lib/api + analytics (ADR 0008, 0014)<br/>store/auth (ADR 0007, 0009) · utils (PKCE) · actions · types"]
     srv["<b>Next.js server</b><br/>root layout, server action,<br/>/ingest rewrites"]
   end
 
@@ -58,8 +58,8 @@ flowchart TB
   srv --> oai
 ```
 
-How to read it: dependencies point **down and right**. `modules/` may import
-shared code, never the other way round, and modules follow the layering in
+How to read it: dependencies point **down**. `modules/` may import `shared/`,
+never the other way round (enforced), and modules follow the layering in
 ADR 0001.
 
 ## Decisions

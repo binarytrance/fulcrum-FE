@@ -22,8 +22,8 @@ graph TD
 |---|---|---|
 | Root | `app/layout.tsx` | `<html>`, Geist fonts, anti-flash theme script, `NextIntlClientProvider`, `ThemeProvider`, `Providers`, `Toaster` |
 | Auth gate | `app/(app)/layout.tsx` | Blocks children until the session is hydrated, so pages never call the API without a token |
-| `AppShell` | `components/app-shell.tsx` | Behaviour only: listens for `session-expired`, clears auth, redirects |
-| Chrome | `components/workspace-layout.tsx` | Left nav + content column (`max-w-6xl`) |
+| `AppShell` | `shared/components/app-shell.tsx` | Behaviour only: listens for `session-expired`, clears auth, redirects |
+| Chrome | `shared/components/workspace-layout.tsx` | Left nav + content column (`max-w-6xl`) |
 
 `AppShell` is the **designated home for authenticated, cross-cutting concerns**:
 realtime provider, command palette, auth-scoped analytics (listed as planned in

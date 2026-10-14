@@ -16,11 +16,11 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { useAuthStore } from "@/store/auth-store";
+import { useAuthStore } from "@/shared/store/auth-store";
 import { NavLink } from "./NavLink";
-import { Avatar } from "@/components/ui/avatar";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+import { Avatar } from "@/shared/components/ui/avatar";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui/tooltip";
+import { cn } from "@/shared/lib/utils";
 
 const COLLAPSED_KEY = "fulcrum:nav:collapsed";
 

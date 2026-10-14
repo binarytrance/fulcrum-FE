@@ -13,8 +13,8 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/store/auth-store";
-import { analytics } from "@/lib/analytics";
+import { useAuthStore } from "@/shared/store/auth-store";
+import { analytics } from "@/shared/lib/analytics";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();

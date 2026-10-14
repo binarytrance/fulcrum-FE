@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { CalendarDays, Target, Flame } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { useAuthStore } from "@/store/auth-store";
-import { formatLongDate, formatShortDate } from "@/lib/date";
-import { Button } from "@/components/ui/button";
+import { useAuthStore } from "@/shared/store/auth-store";
+import { formatLongDate, formatShortDate } from "@/shared/lib/date";
+import { Button } from "@/shared/components/ui/button";
 import { CreateGoalModal } from "@/modules/goals";
 import type { AppStreak } from "@/modules/insights";
 // import { getDailySnippet } from "@/modules/motivation";

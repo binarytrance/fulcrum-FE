@@ -4,7 +4,7 @@
 
 ## Decision
 
-- **One HTTP client** in `src/lib/api.ts`: `apiFetch` (adds auth, handles
+- **One HTTP client** in `src/shared/lib/api.ts`: `apiFetch` (adds auth, handles
   refresh, ADR 0007) and `unwrapApiResponse`.
 - **Backend envelope:** every endpoint returns
   `{ success, message, data }`; `unwrapApiResponse<T>` returns `data` or throws

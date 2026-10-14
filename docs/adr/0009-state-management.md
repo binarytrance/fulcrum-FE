@@ -6,11 +6,11 @@
 
 | Kind of state | Where it lives |
 |---|---|
-| Session / current user | **zustand** store (`store/auth-store.ts`), the only global store |
+| Session / current user | **zustand** store (`shared/store/auth-store.ts`), the only global store |
 | Server data (tasks, goals, ...) | Component or hook state (ADR 0008) |
 | Theme | React context (`ThemeProvider`) |
 | Form state | react-hook-form (ADR 0012) |
-| Small per-device preferences (theme, nav state) | `localStorage` via `utils/{read,write}LocalStorage` |
+| Small per-device preferences (theme, nav state) | `localStorage` via `shared/utils/{read,write}LocalStorage` |
 | Access token | In-memory module variable (ADR 0007) |
 
 Rule of thumb: **do not add a global store for server data**; keep it with the

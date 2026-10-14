@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api";
+import { apiFetch } from "@/shared/lib/api";
 import type { DailyInsightsResponse } from "../types";
 
 type ApiSuccess<T> = { success: true; message: string; data: T };

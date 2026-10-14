@@ -3,7 +3,7 @@
 import * as React from "react"
 import { X } from "lucide-react"
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/shared/lib/utils"
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -206,7 +206,7 @@ function ToastItem({ toast: t, onDismiss }: ToastItemProps) {
 //
 // Drop this once anywhere in your root layout, e.g.:
 //
-//   import { Toaster } from "@/components/ui/toast"
+//   import { Toaster } from "@/shared/components/ui/toast"
 //   export default function RootLayout({ children }) {
 //     return (
 //       <html>

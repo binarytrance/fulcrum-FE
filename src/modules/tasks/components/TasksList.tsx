@@ -1,7 +1,7 @@
 import type { PaginatedTasks, TaskResponse } from "../types";
 import { TaskRow } from "./TaskRow";
-import { Button } from "@/components/ui/button";
-import { formatDateHeader } from "@/lib/date";
+import { Button } from "@/shared/components/ui/button";
+import { formatDateHeader } from "@/shared/lib/date";
 
 type TasksListProps = {
   loading: boolean;

@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { Zap } from "lucide-react";
-import { Spinner } from "@/components/ui/spinner";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Spinner } from "@/shared/components/ui/spinner";
+import { Button } from "@/shared/components/ui/button";
+import { cn } from "@/shared/lib/utils";
 import { updateTask } from "@/modules/tasks/api/tasks-api";
-import { analytics } from "@/lib/analytics";
+import { analytics } from "@/shared/lib/analytics";
 import { CreateTaskModal } from "./CreateTaskModal";
 import type { TaskResponse } from "@/modules/tasks/types";
 

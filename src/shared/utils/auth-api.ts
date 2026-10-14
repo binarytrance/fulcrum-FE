@@ -1,4 +1,4 @@
-import { buildAuthApiUrl } from "@/utils/auth";
+import { buildAuthApiUrl } from "@/shared/utils/auth";
 
 export async function authApiFetch(
   path: string,

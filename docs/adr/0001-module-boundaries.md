@@ -21,8 +21,9 @@ into each other's internals (e.g. `@/modules/goals/api/goals-api`).
 2. **Dependencies flow one way** along a declared layering. Higher layers may
    import lower ones, never the reverse.
 3. **No circular imports**, including cycles that pass through a barrel.
-4. **Shared, non-domain code stays outside modules** (`components/`, `lib/`,
-   `utils/`, `store/`) and must not import from `modules/`.
+4. **Shared, non-domain code lives in `src/shared/`** (components, lib, utils,
+   store, actions, types). It is the lowest layer and must not import from
+   `modules/`.
 
 ### Layering
 

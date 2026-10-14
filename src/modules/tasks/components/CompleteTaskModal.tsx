@@ -10,9 +10,9 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { formatDuration } from "@/lib/duration";
+} from "@/shared/components/ui/dialog";
+import { Button } from "@/shared/components/ui/button";
+import { formatDuration } from "@/shared/lib/duration";
 import type { TaskResponse } from "../types";
 
 const schema = z.object({

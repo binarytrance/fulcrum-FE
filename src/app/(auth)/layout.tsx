@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Trophy, Zap, BarChart3, CalendarDays } from "lucide-react";
 import { getTranslations } from "next-intl/server";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { ThemeToggle } from "@/shared/components/theme-toggle";
 
 export default async function AuthLayout({ children }: { children: React.ReactNode }) {
   const t = await getTranslations("Auth.layout");

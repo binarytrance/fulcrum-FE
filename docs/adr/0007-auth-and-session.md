@@ -4,7 +4,7 @@
 
 ## Context
 
-Stated in `src/lib/api.ts`: tokens must not be readable from persistent browser
+Stated in `src/shared/lib/api.ts`: tokens must not be readable from persistent browser
 storage.
 
 ## Decision
@@ -18,7 +18,7 @@ storage.
 - If refresh fails, `apiFetch` dispatches a **`session-expired`** event;
   `AppShell` clears state and redirects to `/signin`.
 - **OAuth (Google, GitHub) uses PKCE**; callback pages exchange the code.
-- Session state is a **zustand store** (`store/auth-store.ts`) with `hydrate`
+- Session state is a **zustand store** (`shared/store/auth-store.ts`) with `hydrate`
   (refresh on page load), `clearAuth`, `signoutAll`.
 
 ```mermaid
@@ -46,5 +46,5 @@ sequenceDiagram
 
 ## Known gaps
 
-- `AuthTokens` / `AuthResponse` types in `src/types/index.ts` still declare
+- `AuthTokens` / `AuthResponse` types in `src/shared/types/index.ts` still declare
   `refreshToken`, which never reaches JS (tracked in `src/CLAUDE.md`).

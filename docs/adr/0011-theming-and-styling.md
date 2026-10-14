@@ -10,7 +10,7 @@
   (`@custom-variant dark (&:is(.dark *))`).
 - **No flash on load:** an inline script in the root layout sets the class
   before React hydrates, from `localStorage` or the OS preference.
-- **`ThemeProvider`** (custom context, `components/theme-provider.tsx`) exposes
+- **`ThemeProvider`** (custom context, `shared/components/theme-provider.tsx`) exposes
   `theme`, `toggle`, and `mounted`; the choice persists in `localStorage`.
 - **Fonts:** Geist Sans / Geist Mono through `next/font`.
 - **Ambient background:** three fixed, low-opacity radial blobs in the root

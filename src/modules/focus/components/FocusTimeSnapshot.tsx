@@ -1,10 +1,6 @@
 "use client";
 
-import { Play, ClipboardList } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { ActionMenu } from "@/components/ui/action-menu";
-import { Spinner } from "@/components/ui/spinner";
+import { Spinner } from "@/shared/components/ui/spinner";
 import type { DailyInsightsFocusSessions } from "@/modules/insights";
 
 type Props = {
@@ -22,21 +18,6 @@ function formatDuration(minutes: number): string {
 }
 
 export function FocusTimeSnapshot({ data, loading }: Props) {
-  const router = useRouter();
-
-  const menuItems = [
-    {
-      label: "Start focus session",
-      icon: <Play className="h-3.5 w-3.5" />,
-      onClick: () => router.push("/focus")
-    },
-    {
-      label: "Log past session",
-      icon: <ClipboardList className="h-3.5 w-3.5" />,
-      onClick: () => {}
-    }
-  ];
-
   const minutes = data?.totalLoggedMinutes ?? 0;
   const sessions = data?.sessionCount ?? 0;
 

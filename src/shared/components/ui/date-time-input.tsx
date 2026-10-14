@@ -1,6 +1,6 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
+import { Input } from "@/shared/components/ui/input";
 import { useMemo } from "react";
 
 function pad2(value: number): string {

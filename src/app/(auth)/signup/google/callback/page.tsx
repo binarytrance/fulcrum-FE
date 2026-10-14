@@ -5,11 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 
-import { useAuthStore } from "@/store/auth-store";
-import { exchangeOAuthCode } from "@/utils/complete-auth";
-import { consumeCodeVerifier } from "@/utils/pkce";
-import { Button } from "@/components/ui/button";
-import { analytics } from "@/lib/analytics";
+import { useAuthStore } from "@/shared/store/auth-store";
+import { exchangeOAuthCode } from "@/shared/utils/complete-auth";
+import { consumeCodeVerifier } from "@/shared/utils/pkce";
+import { Button } from "@/shared/components/ui/button";
+import { analytics } from "@/shared/lib/analytics";
 
 // ─── Inner content ────────────────────────────────────────────────────────────
 

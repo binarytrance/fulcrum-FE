@@ -12,7 +12,7 @@ timers, modals) plus a public marketing page and auth flows.
 - **Next.js 15 App Router + React 19**, TypeScript `strict`, Turbopack in dev.
 - **Client-first rendering.** Most UI is `"use client"` (55 of 75 `.tsx` files).
   Server code is limited to the root layout (loads translations), one server
-  action (`src/actions/generate-username.ts`) and `next.config.ts` rewrites.
+  action (`src/shared/actions/generate-username.ts`) and `next.config.ts` rewrites.
 - **No `middleware.ts`.** Route protection is a client-side gate (ADR 0005).
 - Path alias `@/*` → `src/*`.
 

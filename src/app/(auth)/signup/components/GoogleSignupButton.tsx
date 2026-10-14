@@ -1,10 +1,10 @@
 "use client";
 
-import { buildOAuthStartUrl, GOOGLE_SIGNUP_CALLBACK_PATH } from "@/utils/auth";
-import { generateCodeVerifier, generateCodeChallenge, saveCodeVerifier } from "@/utils/pkce";
+import { buildOAuthStartUrl, GOOGLE_SIGNUP_CALLBACK_PATH } from "@/shared/utils/auth";
+import { generateCodeVerifier, generateCodeChallenge, saveCodeVerifier } from "@/shared/utils/pkce";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
-import { analytics } from "@/lib/analytics";
+import { analytics } from "@/shared/lib/analytics";
 
 // ─── Google "G" brand icon ────────────────────────────────────────────────────
 

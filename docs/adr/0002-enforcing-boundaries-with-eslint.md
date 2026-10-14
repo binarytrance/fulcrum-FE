@@ -19,7 +19,7 @@ Use three tools, each with one job. Config lives in `eslint.config.mjs`.
 |---|---|---|
 | `eslint-plugin-boundaries` (`boundaries/dependencies`) | Direction between modules and barrel-only entry | `goals` importing `@/modules/tasks`; any import of `@/modules/habits/components/X` |
 | `eslint-plugin-import` (`import/no-cycle`) | No circular imports, including via barrels | `tasks → goals → tasks` |
-| `no-restricted-imports` | Safety net for code outside modules, independent of path resolution | `components/` importing `@/modules/tasks/components/TaskRow` |
+| `no-restricted-imports` | (a) `app/` and other code outside modules may not deep-import; (b) `src/shared/` may not import `modules/` at all. String-based, independent of path resolution | (a) `app/` importing `@/modules/tasks/components/TaskRow`; (b) `shared/lib` importing `@/modules/tasks` |
 
 `eslint-import-resolver-typescript` lets both plugins resolve the `@/*` alias.
 

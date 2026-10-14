@@ -1,7 +1,7 @@
 "use client";
 
-import { ArcRing } from "@/components/ui/arc-ring";
-import { Spinner } from "@/components/ui/spinner";
+import { ArcRing } from "@/shared/components/ui/arc-ring";
+import { Spinner } from "@/shared/components/ui/spinner";
 import type { DailyInsightsTasks } from "@/modules/insights";
 
 type Props = {

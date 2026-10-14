@@ -6,7 +6,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/shared/components/ui/dialog";
 import { CreateGoalForm } from "./CreateGoalForm";
 import type { GoalResponse } from "@/modules/goals/api/goals-api";
 
