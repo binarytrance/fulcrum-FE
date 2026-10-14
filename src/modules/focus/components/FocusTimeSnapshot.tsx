@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ActionMenu } from "@/components/ui/action-menu";
 import { Spinner } from "@/components/ui/spinner";
-import type { DailyInsightsFocusSessions } from "@/modules/insights/types";
+import type { DailyInsightsFocusSessions } from "@/modules/insights";
 
 type Props = {
   data: DailyInsightsFocusSessions | null;

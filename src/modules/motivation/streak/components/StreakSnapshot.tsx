@@ -2,7 +2,7 @@
 
 import { Flame } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
-import type { AppStreak } from "@/modules/insights/types";
+import type { AppStreak } from "@/modules/insights";
 
 type Props = {
   data: AppStreak | null;

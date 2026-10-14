@@ -7,9 +7,9 @@ import { useTranslations } from "next-intl";
 import { useAuthStore } from "@/store/auth-store";
 import { formatLongDate, formatShortDate } from "@/lib/date";
 import { Button } from "@/components/ui/button";
-import { CreateGoalModal } from "@/modules/goals/components/CreateGoalModal";
-import type { AppStreak } from "@/modules/insights/types";
-// import { getDailySnippet } from "@/modules/motivation/knowledge";
+import { CreateGoalModal } from "@/modules/goals";
+import type { AppStreak } from "@/modules/insights";
+// import { getDailySnippet } from "@/modules/motivation";
 
 function getGreetingKey(
   hour: number

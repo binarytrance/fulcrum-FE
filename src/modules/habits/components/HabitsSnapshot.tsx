@@ -1,7 +1,7 @@
 "use client";
 
 import { Spinner } from "@/components/ui/spinner";
-import type { DailyInsightsHabits } from "@/modules/insights/types";
+import type { DailyInsightsHabits } from "@/modules/insights";
 
 type Props = {
   data: DailyInsightsHabits | null;

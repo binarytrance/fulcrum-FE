@@ -1,6 +1,6 @@
 "use client";
 
-import { AuthSessionsPageView } from "@/modules/identity/auth-sessions/containers/AuthSessionsPageView";
+import { AuthSessionsPageView } from "@/modules/identity";
 
 export default function SettingsSessionsPage() {
   return <AuthSessionsPageView />;

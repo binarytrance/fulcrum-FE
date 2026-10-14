@@ -13,8 +13,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { createTask } from "@/modules/tasks/api/tasks-api";
-import { getGoals } from "@/modules/goals/api/goals-api";
-import type { GoalResponse } from "@/modules/goals/api/goals-api";
+import { getGoals } from "@/modules/goals";
+import type { GoalResponse } from "@/modules/goals";
 import type { TaskResponse } from "@/modules/tasks/types";
 import { analytics } from "@/lib/analytics";
 

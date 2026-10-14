@@ -2,7 +2,7 @@
 
 import { ArcRing } from "@/components/ui/arc-ring";
 import { Spinner } from "@/components/ui/spinner";
-import type { DailyInsightsTasks } from "@/modules/insights/types";
+import type { DailyInsightsTasks } from "@/modules/insights";
 
 type Props = {
   data: DailyInsightsTasks | null;

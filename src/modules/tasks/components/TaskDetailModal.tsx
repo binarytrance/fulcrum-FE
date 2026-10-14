@@ -14,8 +14,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatDuration } from "@/lib/duration";
-import { getGoals } from "@/modules/goals/api/goals-api";
-import type { GoalResponse } from "@/modules/goals/api/goals-api";
+import { getGoals } from "@/modules/goals";
+import type { GoalResponse } from "@/modules/goals";
 import type { TaskResponse, TaskPriority, TaskStatus } from "../types";
 
 const schema = z.object({

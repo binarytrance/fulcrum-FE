@@ -1,16 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getTasks } from "@/modules/tasks/api/tasks-api";
-import { getHabits } from "@/modules/habits/api/habits-api";
-import { getFocusSessions } from "@/modules/focus/api/focus-sessions-api";
-import { getGoals } from "@/modules/goals/api/goals-api";
-import { getDailyInsights } from "@/modules/insights/api/insights-api";
-import type { TaskResponse } from "@/modules/tasks/types";
-import type { HabitWithHistory } from "@/modules/habits/types";
-import type { FocusSessionResponse } from "@/modules/focus/types";
-import type { GoalResponse } from "@/modules/goals/api/goals-api";
-import type { DailyInsightsResponse } from "@/modules/insights/types";
+import { getTasks } from "@/modules/tasks";
+import { getHabits } from "@/modules/habits";
+import { getFocusSessions } from "@/modules/focus";
+import { getGoals } from "@/modules/goals";
+import { getDailyInsights } from "@/modules/insights";
+import type { TaskResponse } from "@/modules/tasks";
+import type { HabitWithHistory } from "@/modules/habits";
+import type { FocusSessionResponse } from "@/modules/focus";
+import type { GoalResponse } from "@/modules/goals";
+import type { DailyInsightsResponse } from "@/modules/insights";
 
 export type TodayData = {
   loading: boolean;
