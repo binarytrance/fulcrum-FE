@@ -120,6 +120,26 @@ const eslintConfig = [
       ],
     },
   },
+
+  // ── shared/ is the bottom layer: it must not import from modules at all ───
+  // (placed after the block above so this config wins for shared files)
+  {
+    files: ["src/shared/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/modules", "@/modules/**", "**/modules/**"],
+              message:
+                "src/shared is the lowest layer and must not depend on modules. Move the code into a module, or pass what it needs in as props.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ];
 
 export default eslintConfig;
