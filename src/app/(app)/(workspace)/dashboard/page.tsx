@@ -1,7 +1,7 @@
 "use client";
 
 import { TodayBanner, MetricsRow, TodayCardsGrid } from "@/modules/planner";
-import { useTodayData } from "@/modules/planner/hooks/useTodayData";
+import { useTodayData } from "@/modules/planner";
 export default function DashboardPage() {
   const { dailyInsights, loading, ...bentoData } = useTodayData();
 

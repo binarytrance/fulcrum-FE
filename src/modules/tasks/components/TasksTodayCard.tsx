@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { Zap } from "lucide-react";
-import { Spinner } from "@/components/ui/spinner";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Spinner } from "@/shared/components/ui/spinner";
+import { Button } from "@/shared/components/ui/button";
+import { cn } from "@/shared/lib/utils";
 import { updateTask } from "@/modules/tasks/api/tasks-api";
-import { analytics } from "@/lib/analytics";
+import { analytics } from "@/shared/lib/analytics";
 import { CreateTaskModal } from "./CreateTaskModal";
 import type { TaskResponse } from "@/modules/tasks/types";
 
@@ -25,7 +25,7 @@ function selectHighlightedTask(pending: TaskResponse[]): TaskResponse | null {
 function TaskCheckbox({
   checked,
   disabled,
-  onChange,
+  onChange
 }: {
   checked: boolean;
   disabled?: boolean;
@@ -40,12 +40,18 @@ function TaskCheckbox({
         checked
           ? "border-primary bg-primary text-primary-foreground"
           : "border-border hover:border-primary",
-        disabled && "opacity-50 cursor-not-allowed",
+        disabled && "opacity-50 cursor-not-allowed"
       )}
       aria-label={checked ? "Mark incomplete" : "Mark complete"}
     >
       {checked && (
-        <svg viewBox="0 0 10 8" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth={2}>
+        <svg
+          viewBox="0 0 10 8"
+          className="h-2.5 w-2.5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
           <polyline points="1,4 3.5,6.5 9,1" />
         </svg>
       )}
@@ -63,7 +69,9 @@ export function TasksTodayCard({ tasks: initialTasks, loading }: Props) {
   const [togglingIds, setTogglingIds] = useState<Set<string>>(() => new Set());
   const [modalOpen, setModalOpen] = useState(false);
 
-  useEffect(() => { setTasks(initialTasks ?? []); }, [initialTasks]);
+  useEffect(() => {
+    setTasks(initialTasks ?? []);
+  }, [initialTasks]);
 
   const completed = tasks.filter((t) => t.status === "COMPLETED" || t.status === "CANCELLED");
   const pending = tasks.filter((t) => t.status === "PENDING" || t.status === "IN_PROGRESS");
@@ -80,7 +88,11 @@ export function TasksTodayCard({ tasks: initialTasks, loading }: Props) {
     if (!response.ok) {
       setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, status: task.status } : t)));
     }
-    setTogglingIds((prev) => { const next = new Set(prev); next.delete(task.id); return next; });
+    setTogglingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(task.id);
+      return next;
+    });
   }
 
   function handleCreated(task: TaskResponse) {
@@ -100,7 +112,12 @@ export function TasksTodayCard({ tasks: initialTasks, loading }: Props) {
           )}
         </div>
         {(loading || total > 0) && (
-          <Button variant="outline" size="sm" className="h-6 px-2 text-xs" onClick={() => setModalOpen(true)}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-6 px-2 text-xs"
+            onClick={() => setModalOpen(true)}
+          >
             + Add
           </Button>
         )}
@@ -141,7 +158,7 @@ export function TasksTodayCard({ tasks: initialTasks, loading }: Props) {
               <span
                 className={cn(
                   "flex-1 text-sm font-medium text-foreground",
-                  highlighted.status === "COMPLETED" && "line-through text-muted-foreground",
+                  highlighted.status === "COMPLETED" && "line-through text-muted-foreground"
                 )}
               >
                 {highlighted.title}
@@ -169,9 +186,7 @@ export function TasksTodayCard({ tasks: initialTasks, loading }: Props) {
           {/* Completed tasks */}
           {completed.length > 0 && (
             <>
-              {(highlighted || regular.length > 0) && (
-                <div className="h-px bg-border/40" />
-              )}
+              {(highlighted || regular.length > 0) && <div className="h-px bg-border/40" />}
               <div className="flex flex-col gap-1">
                 {completed.map((task) => (
                   <div key={task.id} className="flex items-center gap-2.5 px-0.5 py-1 opacity-50">
@@ -190,11 +205,7 @@ export function TasksTodayCard({ tasks: initialTasks, loading }: Props) {
           )}
         </div>
       )}
-      <CreateTaskModal
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        onCreated={handleCreated}
-      />
+      <CreateTaskModal open={modalOpen} onOpenChange={setModalOpen} onCreated={handleCreated} />
     </div>
   );
 }

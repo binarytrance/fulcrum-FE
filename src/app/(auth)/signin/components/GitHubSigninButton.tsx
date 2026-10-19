@@ -1,10 +1,10 @@
 "use client";
 
-import { buildOAuthStartUrl } from "@/utils/auth";
-import { generateCodeVerifier, generateCodeChallenge, saveCodeVerifier } from "@/utils/pkce";
+import { buildOAuthStartUrl } from "@/shared/utils/auth";
+import { generateCodeVerifier, generateCodeChallenge, saveCodeVerifier } from "@/shared/utils/pkce";
 import { Github, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { analytics } from "@/lib/analytics";
+import { analytics } from "@/shared/lib/analytics";
 
 const GITHUB_SIGNIN_CALLBACK_PATH = "/signin/github/callback";
 

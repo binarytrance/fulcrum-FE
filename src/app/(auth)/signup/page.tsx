@@ -9,10 +9,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Zap, Mail, Lock, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { authApiFetch } from "@/utils/auth-api";
-import { analytics } from "@/lib/analytics";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { authApiFetch } from "@/shared/utils/auth-api";
+import { analytics } from "@/shared/lib/analytics";
+import { Button } from "@/shared/components/ui/button";
+import { Input } from "@/shared/components/ui/input";
 import {
   Form,
   FormControl,
@@ -20,7 +20,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage
-} from "@/components/ui/form";
+} from "@/shared/components/ui/form";
 import { GoogleSignupButton } from "./components/GoogleSignupButton";
 import { GitHubSignupButton } from "./components/GitHubSignupButton";
 

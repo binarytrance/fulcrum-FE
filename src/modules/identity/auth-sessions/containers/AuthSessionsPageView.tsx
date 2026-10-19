@@ -15,15 +15,15 @@ import {
   ShieldAlert
 } from "lucide-react";
 
-import { useAuthStore } from "@/store/auth-store";
+import { useAuthStore } from "@/shared/store/auth-store";
 import {
   listSessions,
   revokeSession
 } from "@/modules/identity/auth-sessions/api/auth-sessions-api";
-import type { AuthSession } from "@/types";
-import { Button } from "@/components/ui/button";
-import { analytics } from "@/lib/analytics";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import type { AuthSession } from "@/shared/types";
+import { Button } from "@/shared/components/ui/button";
+import { analytics } from "@/shared/lib/analytics";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/components/ui/card";
 
 function guessDeviceIcon(userAgent: string | null) {
   if (!userAgent) return <Globe className="h-5 w-5" />;

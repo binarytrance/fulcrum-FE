@@ -5,17 +5,17 @@ import { useTranslations } from "next-intl";
 import { CalendarDays } from "lucide-react";
 
 import { getTasks, updateTask } from "@/modules/tasks/api/tasks-api";
-import { toast } from "@/components/ui/toast";
+import { toast } from "@/shared/components/ui/toast";
 import { TasksList } from "@/modules/tasks/components/TasksList";
 import { CreateTaskModal } from "@/modules/tasks/components/CreateTaskModal";
 import { CompleteTaskModal } from "@/modules/tasks/components/CompleteTaskModal";
 import { TaskDetailModal } from "@/modules/tasks/components/TaskDetailModal";
 import type { TaskUpdateInput } from "@/modules/tasks/components/TaskDetailModal";
-import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { formatShortDate } from "@/lib/date";
+import { Button } from "@/shared/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
+import { formatShortDate } from "@/shared/lib/date";
 import type { PaginatedTasks, TaskResponse, TaskStatus } from "@/modules/tasks/types";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 
 const STATUS_FILTERS: { label: string; value: TaskStatus | undefined }[] = [
   { label: "All", value: undefined },

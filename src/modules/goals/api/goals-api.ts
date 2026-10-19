@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api";
+import { apiFetch } from "@/shared/lib/api";
 
 export const GOAL_CATEGORIES = [
   "HEALTH_FITNESS",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,12 +10,10 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { formatDuration } from "@/lib/duration";
-import { getGoals } from "@/modules/goals/api/goals-api";
-import type { GoalResponse } from "@/modules/goals/api/goals-api";
+} from "@/shared/components/ui/dialog";
+import { Button } from "@/shared/components/ui/button";
+import { cn } from "@/shared/lib/utils";
+import { formatDuration } from "@/shared/lib/duration";
 import type { TaskResponse, TaskPriority, TaskStatus } from "../types";
 
 const schema = z.object({
@@ -79,8 +77,6 @@ export function TaskDetailModal({
   onSave,
   isSaving,
 }: Props) {
-  const [goals, setGoals] = useState<GoalResponse[]>([]);
-
   const estimatedMinutes =
     task && task.estimatedDuration > 0
       ? Math.round(task.estimatedDuration / 60_000)
@@ -106,11 +102,6 @@ export function TaskDetailModal({
       priority: task.priority,
       scheduledFor: task.scheduledFor ?? "",
       estimatedMinutes: estimatedMinutes ? String(estimatedMinutes) : "",
-    });
-    getGoals({ status: "ACTIVE", limit: 50 }).then(({ payload }) => {
-      if (payload && "success" in payload && payload.success) {
-        setGoals(payload.data.items);
-      }
     });
   }, [open, task, estimatedMinutes, reset]);
 

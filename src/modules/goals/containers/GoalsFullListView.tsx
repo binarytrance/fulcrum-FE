@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
-import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/toast";
+import { Button } from "@/shared/components/ui/button";
+import { toast } from "@/shared/components/ui/toast";
 import {
   getGoals,
   updateGoal,
@@ -13,8 +13,8 @@ import {
 } from "@/modules/goals/api/goals-api";
 import { CreateGoalModal } from "@/modules/goals/components/CreateGoalModal";
 import { GoalsList } from "@/modules/goals/components/GoalsList";
-import { analytics } from "@/lib/analytics";
-import { cn } from "@/lib/utils";
+import { analytics } from "@/shared/lib/analytics";
+import { cn } from "@/shared/lib/utils";
 
 type GoalEditorState = { mode: "create" } | { mode: "edit"; goal: GoalResponse };
 

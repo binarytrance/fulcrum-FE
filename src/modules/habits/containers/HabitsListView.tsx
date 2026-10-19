@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/shared/lib/utils";
+import { Button } from "@/shared/components/ui/button";
 import { getHabits } from "@/modules/habits/api/habits-api";
 import { CreateHabitModal } from "@/modules/habits/components/CreateHabitModal";
-import { formatDateHeader } from "@/lib/date";
+import { formatDateHeader } from "@/shared/lib/date";
 import type { HabitResponse, PaginatedHabits, HabitStatus, OccurrenceStatus } from "@/modules/habits/types";
 
 const STATUS_FILTERS: { label: string; value: HabitStatus | undefined }[] = [

@@ -1,5 +1,5 @@
-import { apiFetch, parseApiError, unwrapApiResponse } from "@/lib/api";
-import type { AuthSession } from "@/types";
+import { apiFetch, parseApiError, unwrapApiResponse } from "@/shared/lib/api";
+import type { AuthSession } from "@/shared/types";
 
 /**
  * Fetch all active sessions for the current user.

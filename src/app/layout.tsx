@@ -3,9 +3,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
-import { ThemeProvider } from "@/components/theme-provider";
-import { Providers } from "@/components/providers";
-import { Toaster } from "@/components/ui/toast";
+import { ThemeProvider } from "@/shared/components/theme-provider";
+import { Providers } from "@/shared/components/providers";
+import { Toaster } from "@/shared/components/ui/toast";
 import NextTopLoader from "nextjs-toploader";
 
 const geistSans = Geist({

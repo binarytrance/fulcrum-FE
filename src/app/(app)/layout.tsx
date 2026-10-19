@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/store/auth-store";
-import { getAccessToken } from "@/lib/api";
-import { AppShell } from "@/components/app-shell";
+import { useAuthStore } from "@/shared/store/auth-store";
+import { getAccessToken } from "@/shared/lib/api";
+import { AppShell } from "@/shared/components/app-shell";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();

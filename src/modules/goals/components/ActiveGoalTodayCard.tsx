@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { Spinner } from "@/components/ui/spinner";
+import { Spinner } from "@/shared/components/ui/spinner";
 import { CreateGoalModal } from "./CreateGoalModal";
 import type { GoalResponse } from "@/modules/goals/api/goals-api";
 

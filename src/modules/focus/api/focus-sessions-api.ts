@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api";
+import { apiFetch } from "@/shared/lib/api";
 import type { FocusSessionResponse, PaginatedFocusSessions, FocusSessionsQueryParams } from "../types";
 
 type ApiSuccess<T> = { success: true; message: string; data: T };

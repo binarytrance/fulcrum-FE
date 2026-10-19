@@ -9,12 +9,12 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+} from "@/shared/components/ui/dialog";
+import { Button } from "@/shared/components/ui/button";
+import { cn } from "@/shared/lib/utils";
 import { createHabit } from "@/modules/habits/api/habits-api";
 import type { HabitWithHistory } from "@/modules/habits/types";
-import { analytics } from "@/lib/analytics";
+import { analytics } from "@/shared/lib/analytics";
 
 const DAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"] as const;
 

@@ -1,7 +1,7 @@
 import { Play, Pause, Check, Target } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { formatDuration } from "@/lib/duration";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/shared/lib/utils";
+import { formatDuration } from "@/shared/lib/duration";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui/tooltip";
 import type { TaskResponse, TaskPriority, TaskStatus } from "../types";
 
 const PRIORITY_STRIPE: Record<TaskPriority, string> = {

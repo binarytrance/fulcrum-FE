@@ -6,8 +6,8 @@ import * as zod from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslations } from 'next-intl';
 
-import { Button } from '@/components/ui/button';
-import { analytics } from "@/lib/analytics";
+import { Button } from '@/shared/components/ui/button';
+import { analytics } from "@/shared/lib/analytics";
 import {
     Form,
     FormControl,
@@ -15,9 +15,9 @@ import {
     FormItem,
     FormLabel,
     FormMessage
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { DateTimeInput } from '@/components/ui/date-time-input';
+} from '@/shared/components/ui/form';
+import { Input } from '@/shared/components/ui/input';
+import { DateTimeInput } from '@/shared/components/ui/date-time-input';
 import {
     createGoal,
     updateGoal,

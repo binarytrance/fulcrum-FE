@@ -1,11 +1,11 @@
-import { TasksTodayCard } from "@/modules/tasks/components/TasksTodayCard";
-import { HabitsTodayCard } from "@/modules/habits/components/HabitsTodayCard";
-import { FocusTodayCard } from "@/modules/focus/components/FocusTodayCard";
-import { ActiveGoalTodayCard } from "@/modules/goals/components/ActiveGoalTodayCard";
-import type { TaskResponse } from "@/modules/tasks/types";
-import type { HabitWithHistory } from "@/modules/habits/types";
-import type { FocusSessionResponse } from "@/modules/focus/types";
-import type { GoalResponse } from "@/modules/goals/api/goals-api";
+import { TasksTodayCard } from "@/modules/tasks";
+import { HabitsTodayCard } from "@/modules/habits";
+import { FocusTodayCard } from "@/modules/focus";
+import { ActiveGoalTodayCard } from "@/modules/goals";
+import type { TaskResponse } from "@/modules/tasks";
+import type { HabitWithHistory } from "@/modules/habits";
+import type { FocusSessionResponse } from "@/modules/focus";
+import type { GoalResponse } from "@/modules/goals";
 
 type Props = {
   loading: boolean;

@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Spinner } from "@/components/ui/spinner";
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { toast } from "@/components/ui/toast";
+import { cn } from "@/shared/lib/utils";
+import { Spinner } from "@/shared/components/ui/spinner";
+import { Button } from "@/shared/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui/tooltip";
+import { toast } from "@/shared/components/ui/toast";
 import { CreateHabitModal } from "./CreateHabitModal";
 import { updateHabitOccurrence } from "@/modules/habits/api/habits-api";
 import type { HabitWithHistory } from "@/modules/habits/types";

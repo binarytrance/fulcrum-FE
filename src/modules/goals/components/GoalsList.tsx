@@ -1,7 +1,7 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Button } from "@/shared/components/ui/button";
+import { cn } from "@/shared/lib/utils";
 import type { GoalResponse, GoalPriority } from "@/modules/goals/api/goals-api";
 
 const PRIORITY_DOT: Record<GoalPriority, string> = {
@@ -35,7 +35,13 @@ function GoalRow({
   const isCompleted = goal.status === "COMPLETED";
 
   return (
-    <div className="flex items-start gap-3 rounded-lg border border-border/50 bg-card px-4 py-3 transition-colors hover:bg-accent/40">
+    <div
+      className={cn(
+        "flex items-start gap-3 rounded-lg border border-border/50 bg-card px-4 py-3 transition-colors hover:bg-accent/40",
+        onEdit && !isCompleted && "cursor-pointer"
+      )}
+      onClick={() => { if (onEdit && !isCompleted) onEdit(goal); }}
+    >
       <div className={cn("mt-1 h-2 w-2 shrink-0 rounded-full", goal.priority ? PRIORITY_DOT[goal.priority] : "bg-muted-foreground/40")} />
 
       <div className="min-w-0 flex-1">
@@ -70,25 +76,16 @@ function GoalRow({
         </div>
       </div>
 
-      {!isCompleted && (onEdit || onComplete) && (
-        <div className="flex shrink-0 items-center gap-1.5">
-          {onEdit && (
-            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => onEdit(goal)}>
-              Edit
-            </Button>
-          )}
-          {onComplete && goal.isReadyToComplete && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 px-2 text-xs"
-              disabled={completing}
-              onClick={() => onComplete(goal.id)}
-            >
-              Complete
-            </Button>
-          )}
-        </div>
+      {!isCompleted && onComplete && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 shrink-0 px-2 text-xs"
+          disabled={completing}
+          onClick={(e) => { e.stopPropagation(); onComplete(goal.id); }}
+        >
+          Complete
+        </Button>
       )}
     </div>
   );

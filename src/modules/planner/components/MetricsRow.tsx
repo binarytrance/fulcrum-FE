@@ -1,8 +1,8 @@
-import { FocusTimeSnapshot } from "@/modules/focus/components/FocusTimeSnapshot";
-import { TasksSnapshot } from "@/modules/tasks/components/TasksSnapshot";
-import { HabitsSnapshot } from "@/modules/habits/components/HabitsSnapshot";
-import { StreakSnapshot } from "@/modules/motivation/streak/components/StreakSnapshot";
-import type { DailyInsightsResponse } from "@/modules/insights/types";
+import { FocusTimeSnapshot } from "@/modules/focus";
+import { TasksSnapshot } from "@/modules/tasks";
+import { HabitsSnapshot } from "@/modules/habits";
+import { StreakSnapshot } from "@/modules/motivation";
+import type { DailyInsightsResponse } from "@/modules/insights";
 
 type Props = {
   insights: DailyInsightsResponse | null;
